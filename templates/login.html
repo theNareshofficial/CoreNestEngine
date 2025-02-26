@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Login</title>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .slide-in {
+            animation: slideIn 1s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-sky-500 to-indigo-600 min-h-screen flex items-center justify-center">
+
+    <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md slide-in">
+        <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">NestStockEngine</h1>
+        <h1 class="text-1xl font-bold text-center text-indigo-600 mb-6">Welcome Back</h1>
+        <form action="{{ url_for('login') }}" method="POST" class="space-y-5">
+            <input type="text" name="username" placeholder="Username" required 
+                   class="w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500">
+
+            <input type="password" name="password" placeholder="Password" required 
+                   class="w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500">
+
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+                Login
+            </button>
+        </form>
+        <p class="text-center mt-5 text-gray-500">Don't have an account? 
+            <a href="{{ url_for('register') }}" class="text-sky-500 hover:underline">Register</a>
+        </p>
+    </div>
+
+</body>
+</html>
