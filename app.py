@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from db_config import reg_info, inward_info
 from datetime import datetime
@@ -6,7 +6,6 @@ import os
 
 app = Flask(__name__)
 
-# 🔒 Secure secret key for session management
 app.secret_key = os.urandom(32)
 
 # 🔐 Secure cookie settings (Prevents XSS & CSRF)
@@ -16,7 +15,6 @@ app.config.update(
     SESSION_PERMANENT=False
 )
 
-# 📌 Function to get user IP and Browser info
 def get_user_info():
     user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)  # Works with proxies
     user_agent = request.user_agent.string
@@ -43,10 +41,8 @@ def register():
             flash("Passwords do not match!", "error")
             return redirect(url_for("register"))
 
-        # 🔐 Secure password hashing
         hash_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
 
-        # 📌 Capture user details (IP & Browser)
         user_ip, user_browser = get_user_info()
         register_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -82,11 +78,33 @@ def login():
 
     return render_template('login.html')
 
-@app.route('/dashboard')
+@app.route('/search_suggestions', methods=['GET'])
+def search_suggestions():
+    search_query = request.args.get("q", "").strip()
+
+    if search_query:
+        product_names = inward_info.distinct("product_name", {"product_name": {"$regex": search_query, "$options": "i"}})
+    else:
+        product_names = []
+
+    return jsonify(product_names)
+
+
+@app.route('/dashboard.html', methods=['GET', 'POST'])
 def dashboard():
     if 'user' not in session:
         return redirect(url_for("login"))
-    return render_template("dashboard.html")
+
+    search_query = request.args.get("search", "").strip()
+    query_filter = {}
+
+    if search_query:
+        query_filter = {"product_name": {"$regex": search_query, "$options": "i"}}
+
+    stock_items = list(inward_info.find(query_filter, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
+
+    return render_template("dashboard.html", inward_stock=stock_items, search_query=search_query)
+
 
 @app.route('/inward.html', methods=['GET', 'POST'])
 def inward():
@@ -106,7 +124,7 @@ def inward():
                 "quantity": int(quantity),
                 "rate": float(rate),
                 "price": float(price),
-                "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 📌 Auto-log Date & Time
+                "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
 
             inward_info.insert_one(inward_data)
@@ -118,7 +136,7 @@ def inward():
             return redirect(url_for("inward"))
 
     # Fetch stored inward data
-    stock_items = list(inward_info.find({}, {"_id": 0}))  # Exclude MongoDB `_id`
+    stock_items = list(inward_info.find({}, {"_id": 0}))
     return render_template("inward.html", inward_stock=stock_items)
 
 @app.route('/logout')
