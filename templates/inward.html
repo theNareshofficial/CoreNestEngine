@@ -1,85 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inward Stock</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100">
+{% extends "base.html" %}
 
-    {% include 'navbar.html' %}
+{% block content %}
 
-    <!-- Alerts Section -->
-    <div id="alert-box" class="hidden max-w-xl mx-auto mt-4 p-3 rounded-lg text-white text-center transition-opacity duration-500">
-        <p id="alert-message"></p>
+{% include 'navbar.html' %}
+
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Inward Stock Entry</h2>
+
+    <form method="POST" action="{{ url_for('inward') }}">
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">Product Name:</label>
+            <input type="text" name="product_name" required
+                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">Quantity:</label>
+            <input type="number" name="quantity" min="1" required
+                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">Rate:</label>
+            <input type="number" name="rate" step="0.01" required
+                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">Price:</label>
+            <input type="number" name="price" step="0.01" required
+                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+
+        <button type="submit" class="mt-4 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add
+            Stock</button>
+    </form>
+
+    <h2 class="text-2xl font-semibold text-gray-800 mt-6">Current Inward Stock</h2>
+    <div class="overflow-x-auto mt-4">
+        <table class="w-full bg-white shadow-md rounded-lg">
+            <thead class="bg-blue-500 text-white">
+                <tr>
+                    <th class="p-3">Product Name</th>
+                    <th class="p-3">Quantity</th>
+                    <th class="p-3">Rate</th>
+                    <th class="p-3">Price</th>
+                    <th class="p-3">Added At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in inward_stock %}
+                <tr class="text-center border-b hover:bg-gray-100">
+                    <td class="p-3">{{ item.product_name }}</td>
+                    <td class="p-3">{{ item.quantity }}</td>
+                    <td class="p-3">₹{{ item.rate }}</td>
+                    <td class="p-3">₹{{ item.price }}</td>
+                    <td class="p-3">{{ item.added_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+</div>
 
-    <!-- Inward Form -->
-    <div class="max-w-2xl mx-auto mt-10 bg-white p-6 rounded-lg shadow-lg">
-        <h2 class="text-2xl font-semibold text-center mb-6">Add Inward Stock</h2>
-
-        <form id="inward-form" method="POST" class="space-y-4">
-            <div>
-                <label class="block font-medium">Product Name</label>
-                <input type="text" name="product_name" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div>
-                <label class="block font-medium">Quantity</label>
-                <input type="number" name="quantity" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div>
-                <label class="block font-medium">Rate</label>
-                <input type="number" step="0.01" name="rate" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div>
-                <label class="block font-medium">Price</label>
-                <input type="number" step="0.01" name="price" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition">
-                Add Stock
-            </button>
-        </form>
-    </div>
-
-    <script>
-        document.getElementById("inward-form").addEventListener("submit", async function(event) {
-            event.preventDefault();
-
-            const formData = new FormData(this);
-            const response = await fetch("/inward.html", {
-                method: "POST",
-                body: formData
-            });
-
-            const alertBox = document.getElementById("alert-box");
-            const alertMessage = document.getElementById("alert-message");
-
-            if (response.ok) {
-                alertBox.classList.remove("hidden", "bg-red-500");
-                alertBox.classList.add("bg-green-500");
-                alertMessage.textContent = "✅ Product stored successfully!";
-            } else {
-                alertBox.classList.remove("hidden", "bg-green-500");
-                alertBox.classList.add("bg-red-500");
-                alertMessage.textContent = "❌ Error: Failed to store product!";
-            }
-
-            alertBox.style.opacity = "1";
-
-            setTimeout(() => {
-                alertBox.style.opacity = "0";
-                setTimeout(() => {
-                    alertBox.classList.add("hidden");
-                    location.reload(); 
-                }, 300);
-            }, 2000);
-        });
-    </script>
-
-</body>
-</html>
+{% endblock %}
