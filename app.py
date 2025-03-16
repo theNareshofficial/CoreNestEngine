@@ -1,38 +1,34 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify
+import random
+from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from db_config import reg_info, inward_info
+from db.db_config import reg_info, inward_info, bills_info, bill_collection 
+from config.flask_config import app_key, app_config
 from datetime import datetime
-import os
 
 app = Flask(__name__)
+app.secret_key = app_key()
+app.config.update = app_config()
 
-app.secret_key = os.urandom(32)
-
-# 🔐 Secure cookie settings (Prevents XSS & CSRF)
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,  
-    SESSION_COOKIE_SECURE=True,   # Enable this in production with HTTPS
-    SESSION_PERMANENT=False
-)
-
+# Utility function to get user info
 def get_user_info():
-    user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)  # Works with proxies
+    user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     user_agent = request.user_agent.string
     return user_ip, user_agent
 
+# Home Route redirects to login
 @app.route('/')
 def index():
     return redirect(url_for('login'))
 
-@app.route('/register.html', methods=['GET', 'POST'])
+# Registration Route
+@app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
-        confirm_password = request.form["confirm_password"]  
+        confirm_password = request.form["confirm_password"]
         number = request.form["number"]
 
-        # 🔒 Preventing Username Enumeration
         if reg_info.find_one({"username": username}):
             flash("Username already exists!", "error")
             return redirect(url_for("register"))
@@ -41,14 +37,13 @@ def register():
             flash("Passwords do not match!", "error")
             return redirect(url_for("register"))
 
-        hash_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
-
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256', salt_length=16)
         user_ip, user_browser = get_user_info()
         register_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         register_data = {
             "username": username, 
-            "password": hash_password,
+            "password": hashed_password,
             "number": number,
             "register_date": register_date,
             "ip_address": user_ip,
@@ -61,10 +56,11 @@ def register():
 
     return render_template('register.html')
 
-@app.route('/login.html', methods=['GET', 'POST'])
+# Login Route
+@app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
+        username = request.form["username"].strip()
         password = request.form["password"]
 
         user = reg_info.find_one({"username": username})
@@ -78,72 +74,113 @@ def login():
 
     return render_template('login.html')
 
-@app.route('/search_suggestions', methods=['GET'])
-def search_suggestions():
-    search_query = request.args.get("q", "").strip()
-
-    if search_query:
-        product_names = inward_info.distinct("product_name", {"product_name": {"$regex": search_query, "$options": "i"}})
-    else:
-        product_names = []
-
-    return jsonify(product_names)
-
-
-@app.route('/dashboard.html', methods=['GET', 'POST'])
+# Dashboard Route
+@app.route('/dashboard.html')
 def dashboard():
     if 'user' not in session:
         return redirect(url_for("login"))
+    stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
+    return render_template("dashboard.html", inward_stock=stock_items)
 
-    search_query = request.args.get("search", "").strip()
-    query_filter = {}
-
-    if search_query:
-        query_filter = {"product_name": {"$regex": search_query, "$options": "i"}}
-
-    stock_items = list(inward_info.find(query_filter, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
-
-    return render_template("dashboard.html", inward_stock=stock_items, search_query=search_query)
-
-
-@app.route('/inward.html', methods=['GET', 'POST'])
+# Inward Stock Route (Fixed to store manual price)
+@app.route('/inward', methods=['GET', 'POST'])
 def inward():
     if request.method == "POST":
-        try:
-            product_name = request.form.get("product_name")
-            quantity = request.form.get("quantity")
-            rate = request.form.get("rate")
-            price = request.form.get("price")
+        product_name = request.form.get("product_name", "").strip()
+        quantity = request.form.get("quantity", "0").strip()
+        rate = request.form.get("rate", "0").strip()
+        price = request.form.get("price", "0").strip()  # Now takes manual price
 
-            if not product_name or not quantity or not rate or not price:
-                flash("All fields are required!", "error")
-                return redirect(url_for("inward"))
-
-            inward_data = {
-                "product_name": product_name,
-                "quantity": int(quantity),
-                "rate": float(rate),
-                "price": float(price),
-                "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-
-            inward_info.insert_one(inward_data)
-            flash("Inward data saved successfully!", "success")
+        if not product_name or not quantity or not rate or not price:
+            flash("All fields are required!", "error")
             return redirect(url_for("inward"))
 
-        except Exception as e:
-            flash(f"Database Error: {str(e)}", "error")
-            return redirect(url_for("inward"))
+        inward_data = {
+            "product_name": product_name,
+            "quantity": int(quantity),
+            "rate": float(rate),
+            "price": float(price),  # Uses manual price now
+            "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
 
-    # Fetch stored inward data
+        inward_info.insert_one(inward_data)
+        flash("Inward stock added successfully!", "success")
+        return redirect(url_for("inward"))
+
     stock_items = list(inward_info.find({}, {"_id": 0}))
     return render_template("inward.html", inward_stock=stock_items)
 
+# Bill Detail Route
+@app.route("/bill_detail", methods=["GET"])
+def bill_detail():
+    bill_no = request.args.get("bill_no", "").strip()
+    bill_data = []
+
+    if bill_no:
+        bill_data = list(bill_collection.find({"bill_no": bill_no}, {"_id": 0}))
+
+    return render_template("bill_detail.html", bill_data=bill_data, bill_no=bill_no)
+
+
+@app.route('/billing', methods=['GET', 'POST'])
+def billing_page():
+    if request.method == 'POST':
+        customer_name = request.form.get("customer_name", "").strip()
+        mobile_number = request.form.get("mobile_number", "").strip()
+        selected_items = [item["product_name"] for item in inward_info.find({}, {"_id": 0, "product_name": 1})]
+
+        if not customer_name:
+            flash("Customer name is required!", "error")
+            return redirect(url_for("billing_page"))
+
+        items = []
+        total_amount = 0
+
+        for item_name in selected_items:
+            quantity = int(request.form.get(f"quantity_{item_name}", "0"))
+            if quantity > 0:
+                item_data = inward_info.find_one({"product_name": item_name}, {"_id": 0, "price": 1})
+                sale_price = float(item_data.get("price", 1))
+                total = quantity * sale_price
+                total_amount += total
+
+                items.append({
+                    "product_name": item_name,
+                    "quantity": quantity,
+                    "sale_price": sale_price,
+                    "total": total
+                })
+
+        bill_number = f"BILL-{random.randint(1000, 9999)}"
+        bill_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        bill_data = {
+            "bill_no": bill_number,
+            "bill_date": bill_date,
+            "customer_name": customer_name,
+            "mobile_number": mobile_number,
+            "items": items,
+            "total_amount": total_amount
+        }
+
+        bill_collection.insert_one(bill_data)
+        return render_template("bill_template.html", bill_data=bill_data)
+
+    stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "price": 1, "quantity": 1}))
+
+    return render_template("billing.html", stock_items=stock_items)
+
+# Logout Route
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     flash("Logged out successfully!", "info")
     return redirect(url_for("login"))
+
+# Error Handler
+@app.errorhandler(404)
+def not_found(error):
+    return make_response(render_template('404.html'), 404)
 
 if __name__ == "__main__":
     app.run(debug=True)
