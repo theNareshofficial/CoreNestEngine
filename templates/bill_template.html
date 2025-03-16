@@ -1,0 +1,81 @@
+{% include 'navbar.html' %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Summary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-gray-100 to-gray-300 min-h-screen flex items-center justify-center p-6">
+
+    <div id="bill-container" class="max-w-4xl w-full p-6 bg-white rounded-2xl shadow-2xl transform transition-all duration-500 hover:scale-105 relative">
+        <!-- Close Button -->
+        <button onclick="document.getElementById('bill-container').remove()" 
+                class="absolute top-2 right-2 bg-red-500 text-white rounded-full px-3 py-1 text-lg font-bold shadow-md hover:bg-red-700 transition-all duration-300">
+            ✖️
+        </button>
+
+        <h2 class="text-4xl font-bold text-gray-900 mb-6 text-center animate-bounce">🧾 Bill Summary</h2>
+
+        <!-- Bill Details -->
+        <div class="mb-6 p-4 border-2 border-gray-200 rounded-xl shadow-md bg-gradient-to-r from-purple-400 to-blue-300 animate-fadeIn">
+            <p class="text-lg font-medium"><strong>Bill No:</strong> {{ bill_data["bill_no"] }}</p>
+            <p class="text-lg font-medium"><strong>Bill Date:</strong> {{ bill_data["bill_date"] }}</p>
+            <p class="text-lg font-medium"><strong>Customer Name:</strong> {{ bill_data["customer_name"] }}</p>
+            <p class="text-lg font-medium"><strong>Mobile Number:</strong> {{ bill_data["mobile_number"] }}</p>
+        </div>
+
+        <!-- Items List -->
+        <h3 class="text-2xl font-semibold text-gray-800 mb-4">🛒 Purchased Items</h3>
+        <div class="p-4 border-2 border-gray-200 rounded-xl shadow-lg bg-gradient-to-r from-indigo-500 to-blue-600 text-white transform transition-all duration-300">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-indigo-700">
+                        <th class="p-2 border-b border-indigo-400">Product</th>
+                        <th class="p-2 border-b border-indigo-400">Quantity</th>
+                        <th class="p-2 border-b border-indigo-400">Sale Rate</th>
+                        <th class="p-2 border-b border-indigo-400">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in bill_data["items"] %}
+                    <tr class="hover:bg-indigo-400 transition-all duration-200">
+                        <td class="p-2 border-b border-indigo-300">{{ item["product_name"] }}</td>
+                        <td class="p-2 border-b border-indigo-300">{{ item["quantity"] }}</td>
+                        <td class="p-2 border-b border-indigo-300">₹{{ item["sale_price"] }}</td>
+                        <td class="p-2 border-b border-indigo-300">₹{{ item["total"] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Total Amount -->
+        <div class="mt-6 p-4 bg-gradient-to-r from-green-500 to-teal-600 rounded-xl shadow-md text-white text-center animate-pulse">
+            <h3 class="text-3xl font-bold">💰 Total Amount: ₹{{ bill_data["total_amount"] }}</h3>
+        </div>
+ 
+        <!-- Print Button -->
+        <div class="flex justify-center mt-8">
+            <button onclick="window.print()" class="px-6 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transform hover:scale-110 transition-all duration-300">
+                🖨️ Print Bill
+            </button>
+        </div>
+    </div>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.8s ease-out;
+        }
+    </style>
+
+</body>
+</html>
