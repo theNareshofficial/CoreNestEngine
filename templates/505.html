@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>505 - HTTP Version Not Supported</title>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        @keyframes slide-fade {
+            0% {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); opacity: 1; }
+            20% { transform: translate(-2px, 2px); opacity: 0.8; }
+            40% { transform: translate(2px, -2px); opacity: 1; }
+            60% { transform: translate(-2px, 2px); opacity: 0.8; }
+            80% { transform: translate(2px, -2px); opacity: 1; }
+            100% { transform: translate(0); opacity: 1; }
+        }
+
+        .fade-in {
+            animation: slide-fade 1s ease-in-out;
+        }
+
+        .glitch {
+            animation: glitch 0.8s infinite linear;
+        }
+    </style>
+</head>
+
+<body class="bg-gradient-to-r from-red-500 to-gray-800 min-h-screen flex items-center justify-center">
+
+    <div class="text-center bg-white shadow-2xl rounded-3xl p-12 max-w-2xl w-full fade-in">
+        <h1 class="text-8xl font-extrabold text-red-600 mb-4 glitch">505</h1>
+        <h2 class="text-3xl font-semibold text-gray-800 mb-3">HTTP Version Not Supported</h2>
+        <p class="text-lg text-gray-500 mb-6">The server doesn't support the HTTP version used in this request.</p>
+
+        <a href="{{ url_for('index') }}" 
+           class="inline-block bg-red-500 text-white px-8 py-3 rounded-xl hover:bg-red-600 transition-all duration-300 transform hover:scale-105 shadow-lg">
+           🔙 Return to Home
+        </a>
+    </div>
+
+</body>
+</html>
