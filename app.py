@@ -1,7 +1,7 @@
 import random
-from flask import Flask, render_template, redirect, url_for, request, flash, session, jsonify, make_response
+from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from db.db_config import reg_info, inward_info, bills_info, bill_collection 
+from db.db_config import reg_info, inward_info, bill_collection_data
 from config.flask_config import app_key, app_config
 from datetime import datetime
 
@@ -9,7 +9,6 @@ app = Flask(__name__)
 app.secret_key = app_key()
 app.config.update = app_config()
 
-# Utility function to get user info
 def get_user_info():
     user_ip = request.headers.get("X-Forwarded-For", request.remote_addr)
     user_agent = request.user_agent.string
@@ -82,11 +81,11 @@ def dashboard():
     stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
     return render_template("dashboard.html", inward_stock=stock_items)
 
-# Inward Stock Route (Fixed to store manual price)
+# Inward Stock Route
 @app.route('/inward', methods=['GET', 'POST'])
 def inward():
     if request.method == "POST":
-        product_name = request.form.get("product_name", "").strip()
+        product_name = request.form.get("product_name", "").strip().capitalize()
         quantity = request.form.get("quantity", "0").strip()
         rate = request.form.get("rate", "0").strip()
         price = request.form.get("price", "0").strip()  # Now takes manual price
@@ -111,21 +110,20 @@ def inward():
     return render_template("inward.html", inward_stock=stock_items)
 
 # Bill Detail Route
-@app.route("/bill_detail", methods=["GET"])
+@app.route("/bill_detail.html", methods=["GET"])
 def bill_detail():
-    bill_no = request.args.get("bill_no", "").strip()
-    bill_data = []
+    bill_no = request.args.get("bill_no", "").strip().upper()
+    bill_data = None
 
     if bill_no:
-        bill_data = list(bill_collection.find({"bill_no": bill_no}, {"_id": 0}))
+        bill_data = bill_collection_data.find_one({"bill_no": bill_no}, {"_id": 0})
 
     return render_template("bill_detail.html", bill_data=bill_data, bill_no=bill_no)
-
 
 @app.route('/billing', methods=['GET', 'POST'])
 def billing_page():
     if request.method == 'POST':
-        customer_name = request.form.get("customer_name", "").strip()
+        customer_name = request.form.get("customer_name", "").strip().capitalize()
         mobile_number = request.form.get("mobile_number", "").strip()
         selected_items = [item["product_name"] for item in inward_info.find({}, {"_id": 0, "product_name": 1})]
 
@@ -163,7 +161,7 @@ def billing_page():
             "total_amount": total_amount
         }
 
-        bill_collection.insert_one(bill_data)
+        bill_collection_data.insert_one(bill_data)
         return render_template("bill_template.html", bill_data=bill_data)
 
     stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "price": 1, "quantity": 1}))
@@ -181,6 +179,10 @@ def logout():
 @app.errorhandler(404)
 def not_found(error):
     return make_response(render_template('404.html'), 404)
+
+@app.errorhandler(505)
+def http_version_not_supported(error):
+    return make_response(render_template('505.html'), 505)
 
 if __name__ == "__main__":
     app.run(debug=True)
