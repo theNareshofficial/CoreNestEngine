@@ -7,7 +7,7 @@ try:
     reg_info = db["reg_info"]             # User Registration Info
     inward_info = db["inward_info"]       # Inward Stock Info
     bills_info = db["bills_info"]         # Bills Info
-    bill_collection = db["bill_collection"]  # Individual Bill Items
+    bill_collection_data = db["bill_collection_data"]  # Individual Bill Items
     
     print("✅ MongoDB Connected Successfully!")
 except Exception as e:
