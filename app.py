@@ -1,8 +1,9 @@
 import random
-from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response
+from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from db.db_config import reg_info, inward_info, bill_collection_data
 from config.flask_config import app_key, app_config
+from modules.auth.session import SESSION
 from datetime import datetime
 
 app = Flask(__name__)
@@ -73,17 +74,27 @@ def login():
 
     return render_template('login.html')
 
-# Dashboard Route
-@app.route('/dashboard.html')
+# Dashboard Route with Search Functionality
+@app.route('/dashboard.html', methods=['GET', 'POST'])
 def dashboard():
-    if 'user' not in session:
-        return redirect(url_for("login"))
-    stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
-    return render_template("dashboard.html", inward_stock=stock_items)
+    SESSION.login()
+
+    search_query = request.args.get('search', '')
+
+    if search_query:
+        stock_items = list(inward_info.find(
+            {"product_name": {"$regex": search_query, "$options": "i"}},
+            {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}
+        ))
+    else:
+        stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
+
+    return render_template("dashboard.html", inward_stock=stock_items, search_query=search_query)
 
 # Inward Stock Route
 @app.route('/inward', methods=['GET', 'POST'])
 def inward():
+    SESSION.login()
     if request.method == "POST":
         product_name = request.form.get("product_name", "").strip().capitalize()
         quantity = request.form.get("quantity", "0").strip()
@@ -112,6 +123,7 @@ def inward():
 # Bill Detail Route
 @app.route("/bill_detail.html", methods=["GET"])
 def bill_detail():
+    SESSION.login()
     bill_no = request.args.get("bill_no", "").strip().upper()
     bill_data = None
 
@@ -136,9 +148,20 @@ def billing_page():
 
         for item_name in selected_items:
             quantity = int(request.form.get(f"quantity_{item_name}", "0"))
+            item_data = inward_info.find_one({"product_name": item_name}, {"_id": 0, "price": 1, "quantity": 1})
+
+            if not item_data:
+                continue 
+            
+            available_stock = int(item_data.get("quantity", 0))  # Get available stock
+            sale_price = float(item_data.get("price", 1))
+
+            # **Validation: Prevent ordering more than available stock**
+            if quantity > available_stock:
+                flash(f"❌ Cannot order more than {available_stock} for {item_name}!", "error")
+                return redirect(url_for("billing_page"))
+
             if quantity > 0:
-                item_data = inward_info.find_one({"product_name": item_name}, {"_id": 0, "price": 1})
-                sale_price = float(item_data.get("price", 1))
                 total = quantity * sale_price
                 total_amount += total
 
@@ -161,17 +184,25 @@ def billing_page():
             "total_amount": total_amount
         }
 
+        # **Update stock after billing**
+        for item in items:
+            inward_info.update_one(
+                {"product_name": item["product_name"]},
+                {"$inc": {"quantity": -item["quantity"]}}  # Reduce stock
+            )
+
         bill_collection_data.insert_one(bill_data)
         return render_template("bill_template.html", bill_data=bill_data)
 
     stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "price": 1, "quantity": 1}))
+
 
     return render_template("billing.html", stock_items=stock_items)
 
 # Logout Route
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
+    SESSION.logout()
     flash("Logged out successfully!", "info")
     return redirect(url_for("login"))
 
