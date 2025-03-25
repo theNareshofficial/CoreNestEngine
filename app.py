@@ -1,10 +1,11 @@
 import random
-from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response, g
+from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response, json, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from db.db_config import reg_info, inward_info, bill_collection_data
+from db.db_config import reg_info, inward_info, bill_collection_data, sales_history
 from config.flask_config import app_key, app_config
 from modules.auth.session import SESSION
-from datetime import datetime
+from datetime import datetime, timedelta
+from bson.json_util import dumps
 
 app = Flask(__name__)
 app.secret_key = app_key()
@@ -67,29 +68,83 @@ def login():
         if user and check_password_hash(user["password"], password):
             session['user'] = username
             flash("Login successful!", "success")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("home"))
         else:
             flash("Invalid username or password", "error")
             return render_template("login.html")
 
     return render_template('login.html')
 
-# Dashboard Route with Search Functionality
+# Dashboard with Live Search
 @app.route('/dashboard.html', methods=['GET', 'POST'])
 def dashboard():
-    SESSION.login()
-
     search_query = request.args.get('search', '')
 
     if search_query:
         stock_items = list(inward_info.find(
             {"product_name": {"$regex": search_query, "$options": "i"}},
-            {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}
+            {"_id": 1, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}
         ))
     else:
-        stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
+        stock_items = list(inward_info.find({}, {"_id": 1, "product_name": 1, "quantity": 1, "rate": 1, "price": 1}))
 
     return render_template("dashboard.html", inward_stock=stock_items, search_query=search_query)
+
+# Route to handle deletion
+@app.route('/delete_item/<item_id>', methods=['POST'])
+def delete_item(item_id):
+    user = "Admin"  # Replace with dynamic user session info later if needed
+
+    item = inward_info.find_one({"_id": item_id})
+    if item:
+        inward_info.delete_one({"_id": item_id})
+        logs.insert_one({
+            "user": user,
+            "item_name": item['product_name'],
+            "deleted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+        return jsonify({"status": "success", "message": "Item deleted successfully"})
+    return jsonify({"status": "error", "message": "Item not found"})
+
+def clean_json(data):
+    """ Convert MongoDB cursor data into clean JSON format """
+    if isinstance(data, list):
+        return [clean_json(item) for item in data]
+    if isinstance(data, dict):
+        return {k: (str(v) if k == "_id" else v) for k, v in data.items()}
+    return data
+
+# 🔥 Route: Home Page with Sales Tracking
+@app.route('/home')
+def home():
+    today = datetime.now().strftime("%Y-%m-%d")
+    week_start = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
+    month_start = datetime.now().replace(day=1).strftime("%Y-%m-%d")
+
+    # Fetch data and clean JSON
+    daily_sales = clean_json(list(sales_history.find({"date": today})))
+    weekly_sales = clean_json(list(sales_history.find({"date": {"$gte": week_start}})))
+    monthly_sales = clean_json(list(sales_history.find({"date": {"$gte": month_start}})))
+
+    daily_total = sum(item['quantity_sold'] for item in daily_sales)
+    weekly_total = sum(item['quantity_sold'] for item in weekly_sales)
+    monthly_total = sum(item['quantity_sold'] for item in monthly_sales)
+
+    return render_template(
+        "home.html",
+        daily_sales=daily_sales,
+        weekly_sales=weekly_sales,
+        monthly_sales=monthly_sales,
+        daily_total=daily_total,
+        weekly_total=weekly_total,
+        monthly_total=monthly_total
+    )
+
+# ✅ API Route: JSON Response (optional)
+@app.route('/api/sales', methods=['GET'])
+def api_sales():
+    sales_data = list(sales_history.find())
+    return jsonify(json.loads(dumps(sales_data)))
 
 # Inward Stock Route
 @app.route('/inward', methods=['GET', 'POST'])
@@ -183,6 +238,14 @@ def billing_page():
             "items": items,
             "total_amount": total_amount
         }
+
+        # Add this after bill_data is created:
+        for item in items:
+            sales_history.update_one(
+                {"date": datetime.now().strftime("%Y-%m-%d"), "product_name": item["product_name"]},
+                {"$inc": {"quantity_sold": item["quantity"]}},
+                upsert=True
+            )
 
         # **Update stock after billing**
         for item in items:
