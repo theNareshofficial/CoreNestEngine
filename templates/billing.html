@@ -41,6 +41,7 @@
             <td class="p-3 font-semibold text-blue-700">₹{{ item.price }}</td>
         
             <td class="p-3">
+              {% if item.quantity > 0 %}
               <input
                 type="number"
                 name="quantity_{{ item.product_name }}"
@@ -51,7 +52,12 @@
               />
               <small class="text-gray-500 block">Stock: <span id="stock_{{ item.product_name }}">{{ item.quantity }}</span></small>
               <small id="warning_{{ item.product_name }}" class="text-red-500 hidden">⚠️ Exceeds Stock!</small>
+              {% else %}
+              <input type="number" disabled value="0" class="px-2 py-1 border rounded-md w-16 text-center bg-gray-200 cursor-not-allowed" />
+              <small class="text-red-500 font-semibold">❌ Out of Stock</small>
+              {% endif %}
             </td>
+            
         
             <td class="p-3 font-bold text-green-700">₹<span id="total_{{ item.product_name }}">0.00</span></td>
           </tr>
