@@ -1,55 +1,44 @@
+<!-- templates/navbar.html -->
+<nav class="bg-blue-600 text-white font-bold p-4 shadow-lg">
+    <div class="container mx-auto flex justify-between items-center">
+        <!-- Animated Clickable Logo -->
+        <a href="{{ url_for('home') }}" class="text-2xl font-bold flex items-center space-x-2 hover:text-red-400 transition duration-300">
+            <div class="animate-spin-slow w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
+            <span>CoreNestEngine</span>
+        </a>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoreNestEngine</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-blue-600 ">
-
-    <nav class="bg-blue-600 text-white font-bold p-4 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <!-- Animated Logo -->
-            <div class="text-2xl font-bold flex items-center space-x-2">
-                <div class="animate-spin-slow w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
-                <span>CoreNestEngine</span>
-            </div>
-
-            <!-- Navigation Links -->
-            <ul class="hidden md:flex space-x-6 text-xl">
-                <li><a href="/dashboard.html" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl text transition duration-300">Home</a></li>
-                <li><a href="{{ url_for('billing_page') }}" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl transition duration-300">Billing</a></li>
-                <li><a href="{{ url_for('inward') }}" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl transition duration-300">Inward</a></li>
-                <li><a href="/settings.html" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl transition duration-300">Settings</a></li>
-                <li><a href="{{ url_for('bill_detail') }}" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl transition duration-300">Search Bill</a></li>
-            </ul>
-
-            <!-- Mobile Menu Button -->
-            <button id="menu-btn" class="md:hidden focus:outline-none">
-                <span class="text-xl">&#9776;</span>
-            </button>
-        </div>
-
-        <!-- Mobile Menu -->
-        <ul id="mobile-menu" class="hidden flex-col space-y-4 p-4 bg-gray-700 mt-2 md:hidden">
-            <li><a href="/dashboard.html" class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl text transition duration-300">Home</a></li>
-            <li><a href="{{ url_for('inward') }}" class="block text-center hover:text-blue-400">Inward</a></li>
-            <li><a href="{{ url_for('billing_page') }}"class="hover:text-black hover:underline hover:decoration-wavy hover:p-1 hover:rounded-xl transition duration-300">Billing</a></li>
-            <li><a href="/settings.html" class="block text-center hover:text-blue-400">Settings</a></li>
-            <a href="{{ url_for('bill_detail') }}" class="text-white hover:text-blue-300">Search Bill</a>
+        <!-- Desktop Navigation Links -->
+        <ul class="hidden md:flex space-x-6 text-xl">
+            <li><a href="{{ url_for('home') }}" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">🏠Home</a></li>
+            <li><a href="/dashboard.html" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">📊Dashboard</a></li>
+            <li><a href="{{ url_for('billing_page') }}" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">💳Billing</a></li>
+            <li><a href="{{ url_for('inward') }}" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">📥Inward</a></li>
+            <li><a href="/settings.html" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">⚙️Settings</a></li>
+            <li><a href="{{ url_for('bill_detail') }}" class="px-2 py-1 bg-blue-500 text-white rounded-full hover:bg-blue-700 transition duration-200">🔍Search Bill</a></li>
         </ul>
-    </nav>
 
-    <script>
-        const menuBtn = document.getElementById("menu-btn");
-        const mobileMenu = document.getElementById("mobile-menu");
+        <!-- Mobile Menu Button -->
+        <button id="menu-btn" class="md:hidden focus:outline-none">
+            <span class="text-2xl">&#9776;</span>
+        </button>
+    </div>
 
-        menuBtn.addEventListener("click", () => {
-            mobileMenu.classList.toggle("hidden");
-        });
-    </script>
+    <!-- Mobile Menu -->
+    <ul id="mobile-menu" class="hidden flex-col space-y-4 p-4 bg-gray-700 mt-2 md:hidden rounded-lg shadow-md">
+        <li><a href="{{ url_for('home') }}" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">🏠Home</a></li>
+        <li><a href="/dashboard.html" class="block text-center hover:text-yellow-300">📊Dashboard</a></li>
+        <li><a href="{{ url_for('inward') }}" class="block text-center hover:text-yellow-300">📥Inward</a></li>
+        <li><a href="{{ url_for('billing_page') }}" class="block text-center hover:text-yellow-300">💳Billing</a></li>
+        <li><a href="/settings.html" class="block text-center hover:text-yellow-300">⚙️Settings</a></li>
+        <a href="{{ url_for('bill_detail') }}" class="block text-center hover:text-yellow-300">🔍Search Bill</a>
+    </ul>
+</nav>
 
-</body>
-</html>
+<script>
+    const menuBtn = document.getElementById("menu-btn");
+    const mobileMenu = document.getElementById("mobile-menu");
+
+    menuBtn.addEventListener("click", () => {
+        mobileMenu.classList.toggle("hidden");
+    });
+</script>
