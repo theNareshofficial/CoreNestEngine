@@ -7,8 +7,8 @@
             <span>CoreNestEngine</span>
         </a>
 
-        <!-- Desktop Navigation Links -->
-        <ul class="hidden md:flex space-x-6 text-xl">
+        <!-- Navigation Links -->
+        <ul class="hidden lg:flex space-x-6 text-xl">
             <li><a href="{{ url_for('home') }}" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">🏠Home</a></li>
             <li><a href="/dashboard.html" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">📊Dashboard</a></li>
             <li><a href="{{ url_for('billing_page') }}" class="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">💳Billing</a></li>
@@ -17,20 +17,20 @@
             <li><a href="{{ url_for('bill_detail') }}" class="px-2 py-1 bg-blue-500 text-white rounded-full hover:bg-blue-700 transition duration-200">🔍Search Bill</a></li>
         </ul>
 
-        <!-- Mobile Menu Button -->
-        <button id="menu-btn" class="md:hidden focus:outline-none">
+        <!-- Tablet & Mobile Menu Button -->
+        <button id="menu-btn" class="lg:hidden focus:outline-none">
             <span class="text-2xl">&#9776;</span>
         </button>
     </div>
 
-    <!-- Mobile Menu -->
-    <ul id="mobile-menu" class="hidden flex-col space-y-4 p-4 bg-gray-700 mt-2 md:hidden rounded-lg shadow-md">
+    <!-- Tablet & Mobile Menu -->
+    <ul id="mobile-menu" class="hidden flex-col space-y-4 p-4 bg-gray-700 mt-2 lg:hidden rounded-lg shadow-md">
         <li><a href="{{ url_for('home') }}" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-700 transition duration-200">🏠Home</a></li>
         <li><a href="/dashboard.html" class="block text-center hover:text-yellow-300">📊Dashboard</a></li>
         <li><a href="{{ url_for('inward') }}" class="block text-center hover:text-yellow-300">📥Inward</a></li>
         <li><a href="{{ url_for('billing_page') }}" class="block text-center hover:text-yellow-300">💳Billing</a></li>
         <li><a href="/settings.html" class="block text-center hover:text-yellow-300">⚙️Settings</a></li>
-        <a href="{{ url_for('bill_detail') }}" class="block text-center hover:text-yellow-300">🔍Search Bill</a>
+        <li><a href="{{ url_for('bill_detail') }}" class="block text-center hover:text-yellow-300">🔍Search Bill</a></li>
     </ul>
 </nav>
 
