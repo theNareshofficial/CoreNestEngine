@@ -1,7 +1,7 @@
 import random
 from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response, json, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from db.db_config import reg_info, inward_info, bill_collection_data, sales_history
+from db.db_config import reg_info, inward_info, bill_collection_data, sales_history, logs
 from config.flask_config import app_key, app_config
 from modules.auth.session import SESSION
 from datetime import datetime, timedelta
@@ -66,7 +66,7 @@ def login():
 
         user = reg_info.find_one({"username": username})
         if user and check_password_hash(user["password"], password):
-            session['user'] = username
+            SESSION.login(username)  # ✅ Store username in session
             flash("Login successful!", "success")
             return redirect(url_for("home"))
         else:
@@ -77,7 +77,10 @@ def login():
 
 # Dashboard with Live Search
 @app.route('/dashboard.html', methods=['GET', 'POST'])
+@SESSION.login_required
 def dashboard():
+    
+    SESSION.check_session_timeout()
     search_query = request.args.get('search', '')
 
     if search_query:
@@ -93,13 +96,13 @@ def dashboard():
 # Route to handle deletion
 @app.route('/delete_item/<item_id>', methods=['POST'])
 def delete_item(item_id):
-    user = "Admin"  # Replace with dynamic user session info later if needed
+    user = SESSION.get_current_user()
 
     item = inward_info.find_one({"_id": item_id})
     if item:
         inward_info.delete_one({"_id": item_id})
         logs.insert_one({
-            "user": user,
+            "user": SESSION.get_current_user(),
             "item_name": item['product_name'],
             "deleted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
@@ -116,7 +119,10 @@ def clean_json(data):
 
 # 🔥 Route: Home Page with Sales Tracking
 @app.route('/home')
+@SESSION.login_required
 def home():
+    SESSION.check_session_timeout() 
+
     today = datetime.now().strftime("%Y-%m-%d")
     week_start = (datetime.now() - timedelta(days=datetime.now().weekday())).strftime("%Y-%m-%d")
     month_start = datetime.now().replace(day=1).strftime("%Y-%m-%d")
@@ -148,8 +154,9 @@ def api_sales():
 
 # Inward Stock Route
 @app.route('/inward', methods=['GET', 'POST'])
+@SESSION.login_required
 def inward():
-    SESSION.login()
+    SESSION.check_session_timeout()
     if request.method == "POST":
         product_name = request.form.get("product_name", "").strip().capitalize()
         quantity = request.form.get("quantity", "0").strip()
@@ -177,8 +184,9 @@ def inward():
 
 # Bill Detail Route
 @app.route("/bill_detail.html", methods=["GET"])
+@SESSION.login_required
 def bill_detail():
-    SESSION.login()
+    SESSION.check_session_timeout()
     bill_no = request.args.get("bill_no", "").strip().upper()
     bill_data = None
 
@@ -187,8 +195,120 @@ def bill_detail():
 
     return render_template("bill_detail.html", bill_data=bill_data, bill_no=bill_no)
 
+@app.route("/edit_bill/<bill_no>", methods=["GET", "POST"])
+@SESSION.login_required
+def edit_bill(bill_no):
+    SESSION.check_session_timeout()
+    bill_data = bill_collection_data.find_one({"bill_no": bill_no}, {"_id": 0})
+
+    if request.method == "POST":
+        updated_items = request.form.getlist("quantity")  # Get updated quantities
+        old_items = bill_data["items"]
+
+        for i, item in enumerate(old_items):
+            old_qty = int(item["quantity"])  # Original quantity in the bill
+            new_qty = int(updated_items[i])  # Updated quantity from the form
+
+            if old_qty != new_qty:
+                # Update the product stock
+                product_name = item["product_name"]
+                product = inward_info.find_one({"product_name": product_name})
+
+                if product:
+                    current_stock = product["quantity"]
+
+                    # **Restore old quantity before updating** (Undo the previous sale)
+                    restored_stock = current_stock + old_qty  
+
+                    # **Now subtract the new quantity**
+                    final_stock = restored_stock - new_qty
+
+                    # Update stock in MongoDB
+                    inward_info.update_one({"product_name": product_name}, {"$set": {"quantity": final_stock}})
+
+                # Update bill data
+                bill_collection_data.update_one(
+                    {"bill_no": bill_no, "items.product_name": product_name},
+                    {"$set": {"items.$.quantity": new_qty, "items.$.total": new_qty * item["sale_price"]}}
+                )
+
+        flash("Bill updated successfully!", "success")
+        return redirect(url_for("bill_detail", bill_no=bill_no))
+
+    return render_template("edit_bill.html", bill_data=bill_data)
+
+@app.route("/update_bill/<bill_no>", methods=["POST"])
+@SESSION.login_required
+def update_bill(bill_no):
+    SESSION.check_session_timeout()
+
+    # Fetch Form Data
+    product_names = request.form.getlist("product_name[]")
+    quantities = request.form.getlist("quantity[]")
+    sale_prices = request.form.getlist("sale_price[]")
+
+    # Fetch the existing bill data from the DB
+    old_bill = bill_collection_data.find_one({"bill_no": bill_no})
+
+    if not old_bill:
+        flash("Bill not found!", "danger")
+        return redirect(url_for("edit_bill", bill_no=bill_no))
+
+    old_items = {item["product_name"]: item["quantity"] for item in old_bill["items"]}
+
+    # Build Updated Bill Data
+    new_items = []
+    total_amount = 0
+
+    for i in range(len(product_names)):
+        product_name = product_names[i]
+        new_qty = int(quantities[i])
+        sale_price = float(sale_prices[i])
+        total_price = new_qty * sale_price
+        new_items.append({
+            "product_name": product_name,
+            "quantity": new_qty,
+            "sale_price": sale_price,
+            "total": total_price
+        })
+        total_amount += total_price
+
+        # Update stock correctly
+        product = inward_info.find_one({"product_name": product_name})
+        if product:
+            old_qty = old_items.get(product_name, 0)
+            stock_change = old_qty - new_qty  # Correct stock change logic
+            new_stock = product["quantity"] + stock_change  # Adjust stock
+            inward_info.update_one({"product_name": product_name}, {"$set": {"quantity": new_stock}})
+
+    # Identify removed items and restore stock
+    removed_items = set(old_items.keys()) - set(product_names)
+    for removed_product in removed_items:
+        removed_qty = old_items[removed_product]
+        inward_info.update_one({"product_name": removed_product}, {"$inc": {"quantity": removed_qty}})  # Restore stock
+
+    # Update Bill in Database
+    bill_collection_data.update_one(
+        {"bill_no": bill_no},
+        {"$set": {"items": new_items, "total_amount": total_amount}}
+    )
+
+    # Log the update
+    logs.insert_one({
+        "user": SESSION.get_current_user(),
+        "bill_no": bill_no,
+        "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "updated_items": new_items
+    })
+
+    flash("Bill updated successfully!", "success")
+    return redirect(url_for("bill_detail", bill_no=bill_no))
+
+
 @app.route('/billing', methods=['GET', 'POST'])
+@SESSION.login_required
 def billing_page():
+    SESSION.check_session_timeout()
     if request.method == 'POST':
         customer_name = request.form.get("customer_name", "").strip().capitalize()
         mobile_number = request.form.get("mobile_number", "").strip()
