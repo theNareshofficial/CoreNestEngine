@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <title>Register</title>
 
     <style>
@@ -46,7 +47,7 @@
             <input type="text" name="number" placeholder="Phone Number" required 
                    class="w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500">
 
-            <button type="submit" class="w-full bg-sky-500 hover:bg-sky-600 text-white py-3 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
+            <button type="submit" onclick="SimpleSuccess()" class="w-full bg-sky-500 hover:bg-sky-600 text-white py-3 rounded-lg transition-transform transform hover:scale-105 shadow-lg">
                 Register
             </button>
         </form>
@@ -57,3 +58,16 @@
 
 </body>
 </html>
+
+
+<script>
+    function SimpleSuccess() {
+        Swal.fire({
+            position: "top-end",
+            icon: "success",
+            title: "Your work has been Registered",
+            showConfirmButton: false,
+            timer: 1500
+        });
+}
+</script>
