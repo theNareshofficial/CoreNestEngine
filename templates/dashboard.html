@@ -28,7 +28,7 @@
                         <th class="border p-3">💲 Purchase Rate</th>
                         <th class="border p-3">💸 Sale Rate</th>
                         <th class="border p-3">⚠️ Status</th>
-                        <th class="border p-3">❌ Action</th>
+                        <th class="border p-3">🛠️ Action</th>
                     </tr>
                 </thead>
                 <tbody id="stockTable">
@@ -45,10 +45,15 @@
                             ✅ In Stock
                             {% endif %}
                         </td>
-                        <td class="border p-3">
+                        <td class="border p-3 flex flex-col gap-2 md:flex-row md:items-center">
+                            <button onclick="addStock('{{ item._id }}', '{{ item.product_name }}')"
+                                class="bg-green-500 text-white px-3 py-1 rounded-md hover:bg-green-600 transition duration-200">➕ Add</button>
+
                             <button onclick="confirmDelete('{{ item._id }}', '{{ item.product_name }}')"
-                                class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-200">❌
-                                Delete</button>
+                                class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-200">❌ Delete</button>
+
+                            <!-- <button onclick="viewLogs('{{ item._id }}', '{{ item.product_name }}')"
+                                class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-200">📜 Logs</button> -->
                         </td>
                     </tr>
                     {% endfor %}
@@ -63,8 +68,9 @@
     {% endif %}
 </div>
 
+<!-- Scripts -->
 <script>
-    // Live Search Implementation
+    // Live Search
     document.getElementById("searchInput").addEventListener("input", (e) => {
         const searchValue = e.target.value.toLowerCase();
         const rows = document.querySelectorAll("#stockTable tr");
@@ -75,21 +81,86 @@
         });
     });
 
-    // Delete Confirmation
-    function confirmDelete(itemId, itemName) {
-        if (confirm(`Are you sure you want to delete '${itemName}'?`)) {
-            fetch(`/delete_item/${itemId}`, { method: "POST" })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "success") {
-                        alert(data.message);
-                        window.location.reload();
-                    } else {
-                        alert(data.message);
-                    }
-                });
+    // ADD STOCK
+    function addStock(itemId, itemName) {
+        const quantity = prompt(`➕ How many units of '${itemName}' do you want to add?`);
+
+        if (quantity !== null && !isNaN(quantity) && parseInt(quantity) > 0) {
+            fetch(`/add_stock/${itemId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ quantity: parseInt(quantity) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.status === "success") {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                alert("⚠️ Error adding stock.");
+                console.error(error);
+            });
+        } else {
+            alert("❗ Please enter a valid number greater than 0.");
         }
     }
-</script>
 
+    // DELETE STOCK
+    function confirmDelete(itemId, itemName) {
+        const quantity = prompt(`❌ How many units of '${itemName}' do you want to delete?`);
+
+        if (quantity !== null && !isNaN(quantity) && parseInt(quantity) > 0) {
+            fetch(`/delete_item/${itemId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ quantity: parseInt(quantity) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.status === "success") {
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                alert("⚠️ Error deleting stock.");
+                console.error(error);
+            });
+        } else {
+            alert("❗ Please enter a valid number greater than 0.");
+        }
+    }
+
+    // VIEW LOGS
+    function viewLogs(itemId, itemName) {
+        fetch(`/get_logs/${itemId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    const logs = data.logs;
+                    if (logs.length === 0) {
+                        alert(`ℹ️ No logs found for '${itemName}'.`);
+                    } else {
+                        let message = `📜 Logs for '${itemName}':\n\n`;
+                        logs.forEach(log => {
+                            message += `• ${log.action.toUpperCase()} by ${log.user} on ${log.timestamp} (Qty: ${log.quantity})\n`;
+                        });
+                        alert(message);
+                    }
+                } else {
+                    alert("⚠️ Failed to fetch logs.");
+                }
+            })
+            .catch(error => {
+                alert("❗ Error retrieving logs.");
+                console.error(error);
+            });
+    }
+</script>
 {% endblock %}
