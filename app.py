@@ -1,11 +1,13 @@
 import random
-from flask import Flask, render_template, redirect, url_for, request, flash, session, make_response, json, jsonify
+from flask import Flask, render_template, redirect, url_for, request, flash, make_response, json, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from db.db_config import reg_info, inward_info, bill_collection_data, sales_history, logs
 from config.flask_config import app_key, app_config
 from modules.auth.session import SESSION
 from datetime import datetime, timedelta
 from bson.json_util import dumps
+from bson.objectid import ObjectId
+
 
 app = Flask(__name__)
 app.secret_key = app_key()
@@ -79,7 +81,6 @@ def login():
 @app.route('/dashboard.html', methods=['GET', 'POST'])
 @SESSION.login_required
 def dashboard():
-    
     SESSION.check_session_timeout()
     search_query = request.args.get('search', '')
 
@@ -97,17 +98,105 @@ def dashboard():
 @app.route('/delete_item/<item_id>', methods=['POST'])
 def delete_item(item_id):
     user = SESSION.get_current_user()
+    data = request.get_json()
 
-    item = inward_info.find_one({"_id": item_id})
+    try:
+        quantity = int(data.get("quantity", 0))
+    except (TypeError, ValueError):
+        quantity = 0
+
+    if quantity <= 0:
+        return jsonify({"status": "error", "message": "Invalid quantity!"})
+
+    item = inward_info.find_one({"_id": ObjectId(item_id)})
+
     if item:
-        inward_info.delete_one({"_id": item_id})
+        current_quantity = item.get("quantity", 0)
+
+        if quantity >= current_quantity:
+            inward_info.delete_one({"_id": ObjectId(item_id)})
+            logs.insert_one({
+                "user": user,
+                "item_name": item['product_name'],
+                "action": "deleted entire item",
+                "quantity": current_quantity,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            return jsonify({"status": "success", "message": f"🗑️ Deleted all stock for '{item['product_name']}'."})
+        else:
+            inward_info.update_one(
+                {"_id": ObjectId(item_id)},
+                {"$inc": {"quantity": -quantity}}
+            )
+            logs.insert_one({
+                "user": user,
+                "item_name": item['product_name'],
+                "action": "partially deleted",
+                "quantity": quantity,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            return jsonify({"status": "success", "message": f"✅ Deleted {quantity} stock from '{item['product_name']}'."})
+
+    return jsonify({"status": "error", "message": "❌ Item not found."})
+
+# Route to handle adding stock
+@app.route('/add_stock/<item_id>', methods=['POST'])
+def add_stock(item_id):
+    user = SESSION.get_current_user()
+    data = request.get_json()
+    
+    try:
+        quantity = int(data.get("quantity", 0))
+    except (TypeError, ValueError):
+        quantity = 0
+
+    if quantity <= 0:
+        return jsonify({"status": "error", "message": "Invalid quantity!"})
+
+    item = inward_info.find_one({"_id": ObjectId(item_id)})
+    if item:
+        inward_info.update_one(
+            {"_id": ObjectId(item_id)},
+            {"$inc": {"quantity": quantity}}  # 🛠️ This part must use your input quantity
+        )
         logs.insert_one({
-            "user": SESSION.get_current_user(),
+            "user": user,
             "item_name": item['product_name'],
-            "deleted_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "action": "added",
+            "quantity": quantity,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
-        return jsonify({"status": "success", "message": "Item deleted successfully"})
+        return jsonify({"status": "success", "message": f"{quantity} stock added successfully!"})
+    
     return jsonify({"status": "error", "message": "Item not found"})
+
+@app.route('/get_logs/<item_id>', methods=['GET'])
+def get_logs(item_id):
+    try:
+        logs_data = list(logs.find({"item_id": ObjectId(item_id)}).sort("timestamp", -1))
+        clean_logs = [{
+            "action": log["action"],
+            "user": log["user"],
+            "timestamp": log["timestamp"],
+            "quantity": log["quantity"]
+        } for log in logs_data]
+
+        return jsonify({"status": "success", "logs": clean_logs})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+    
+@app.route("/view_logs/<item_name>")
+def view_logs(item_name):
+    logs = list(db.stock_logs.find({"item_name": {"$regex": f"^{item_name}$", "$options": "i"}}))  # 👈 Case-insensitive
+    if logs:
+        log_text = f"📜 Logs for '{item_name}':\n\n"
+        for log in logs:
+            log_text += f"• {log['action'].upper()} by {log['user']} on {log['timestamp']} (Qty: {log['quantity']})\n"
+        return jsonify({"status": "success", "logs": log_text})
+    else:
+        return jsonify({"status": "not_found", "logs": f"ℹ️ No logs found for '{item_name}'."})
+
+
 
 def clean_json(data):
     """ Convert MongoDB cursor data into clean JSON format """
@@ -117,7 +206,7 @@ def clean_json(data):
         return {k: (str(v) if k == "_id" else v) for k, v in data.items()}
     return data
 
-# 🔥 Route: Home Page with Sales Tracking
+
 @app.route('/home')
 @SESSION.login_required
 def home():
@@ -171,7 +260,8 @@ def inward():
             "product_name": product_name,
             "quantity": int(quantity),
             "rate": float(rate),
-            "price": float(price),  # Uses manual price now
+            "price": float(price),
+            "user": SESSION.get_current_user(),
             "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
@@ -349,8 +439,13 @@ def billing_page():
 
         bill_number = f"BILL-{random.randint(1000, 9999)}"
         bill_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        user = SESSION.get_current_user()
+
+        if not user:
+            return render_template(url_for("login"))
 
         bill_data = {
+            "user": user,
             "bill_no": bill_number,
             "bill_date": bill_date,
             "customer_name": customer_name,
@@ -379,7 +474,6 @@ def billing_page():
 
     stock_items = list(inward_info.find({}, {"_id": 0, "product_name": 1, "price": 1, "quantity": 1}))
 
-
     return render_template("billing.html", stock_items=stock_items)
 
 # Logout Route
@@ -399,4 +493,4 @@ def http_version_not_supported(error):
     return make_response(render_template('505.html'), 505)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
