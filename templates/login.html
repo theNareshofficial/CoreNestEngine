@@ -33,7 +33,7 @@
     <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md slide-in">
         <h1 class="text-3xl font-bold text-center text-indigo-600 mb-6">NestStockEngine</h1>
         <h1 class="text-1xl font-bold text-center text-indigo-600 mb-6">Welcome Back</h1>
-        <form action="{{ url_for('login') }}" method="POST" class="space-y-5">
+        <form action="{{ url_for('auth.login') }}" method="POST" class="space-y-5">
             <input type="text" name="username" placeholder="Username" required 
                    class="w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-sky-500">
 
@@ -45,7 +45,7 @@
             </button>
         </form>
         <p class="text-center mt-5 text-gray-500">Don't have an account? 
-            <a href="{{ url_for('register') }}" class="text-sky-500 hover:underline">Register</a>
+            <a href="{{ url_for('auth.register') }}" class="text-sky-500 hover:underline">Register</a>
         </p>
     </div>
 
