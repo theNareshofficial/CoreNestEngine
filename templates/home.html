@@ -6,51 +6,34 @@
 <div class="max-w-6xl mx-auto p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl shadow-2xl">
   <h2 class="text-3xl font-bold text-gray-800 mb-4">📊 Home - Sales Overview</h2>
 
-  <!-- Sales Stats Overview -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div class="p-4 bg-blue-100 rounded-md shadow-md text-center">
       <h3 class="text-xl font-semibold">📅 Today's Sales</h3>
       <p class="text-2xl font-bold text-blue-700">{{ daily_total }}</p>
+      <p class="text-sm text-gray-600 mt-1">{{ daily_items_sold }} items sold</p>
     </div>
     <div class="p-4 bg-green-100 rounded-md shadow-md text-center">
       <h3 class="text-xl font-semibold">📈 Weekly Sales</h3>
       <p class="text-2xl font-bold text-green-700">{{ weekly_total }}</p>
+      <p class="text-sm text-gray-600 mt-1">{{ weekly_items_sold }} items sold</p>
     </div>
     <div class="p-4 bg-yellow-100 rounded-md shadow-md text-center">
       <h3 class="text-xl font-semibold">📅 Monthly Sales</h3>
       <p class="text-2xl font-bold text-yellow-700">{{ monthly_total }}</p>
+      <p class="text-sm text-gray-600 mt-1">{{ monthly_items_sold }} items sold</p>
     </div>
   </div>
 
-  <!-- Sales Table -->
   <h2 class="text-2xl font-semibold mb-2">📦 Products Sold Today</h2>
   <table class="w-full bg-white shadow-md rounded-lg border border-gray-300 mb-6">
-    <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-      <tr>
-        <th class="p-3">Product Name</th>
-        <th class="p-3">Quantity Sold</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in daily_sales %}
-      <tr class="text-center border-b hover:bg-green-100 transition duration-200">
-        <td class="p-3">{{ item.product_name }}</td>
-        <td class="p-3 font-semibold text-blue-700">{{ item.quantity_sold }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="2" class="p-3 text-center text-gray-500">No sales today</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    </table>
 
-  <!-- Sales Chart -->
   <h2 class="text-2xl font-semibold mb-2">📊 Weekly Sales Chart</h2>
   <canvas id="salesChart" class="mb-4"></canvas>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
+    // Your Chart.js script remains the same
     const ctx = document.getElementById("salesChart").getContext("2d");
     const weeklySales = {{ weekly_sales | tojson }};
     const labels = weeklySales.map(item => item.product_name);
