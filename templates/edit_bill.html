@@ -7,7 +7,7 @@
     <div class="bg-white p-6 rounded-lg shadow-xl">
         <h1 class="text-3xl font-bold text-gray-800">✏️ Edit Bill - {{ bill_data["bill_no"] }}</h1>
 
-        <form action="{{ url_for('update_bill', bill_no=bill_data['bill_no']) }}" method="POST">
+        <form action="{{ url_for('billing.update_bill', bill_no=bill_data['bill_no']) }}" method="POST">
             <table id="billTable" class="w-full border-collapse border border-gray-300 shadow-md rounded-lg overflow-hidden mt-4">
                 <thead class="bg-gray-200">
                     <tr>
