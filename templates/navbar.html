@@ -11,6 +11,10 @@
             <li><a href="{{ url_for('billing.billing_page') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">💳Billing</a></li>
             <li><a href="{{ url_for('inventory.inward') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">📥Inward</a></li>
             <li><a href="{{ url_for('billing.bill_detail') }}" class="px-2 py-1 bg-blue-500 rounded-full hover:bg-blue-700">🔍Search Bill</a></li>
+            <li><a href="{{ url_for('auth.logout') }}" class="flex items-center space-x-2 px-3 py-1 bg-red-500 text-white rounded-full hover:bg-red-700 transition-all">
+                <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Logout</span></a>
+            </li>
         </ul>
 
         <button id="menu-btn" class="lg:hidden focus:outline-none">
@@ -24,6 +28,7 @@
         <li><a href="{{ url_for('billing.billing_page') }}" class="block text-center hover:text-yellow-300">💳Billing</a></li>
         <li><a href="{{ url_for('inventory.inward') }}" class="block text-center hover:text-yellow-300">📥Inward</a></li>
         <li><a href="{{ url_for('billing.bill_detail') }}" class="block text-center hover:text-yellow-300">🔍Search Bill</a></li>
+        <li><a href="{{ url_for('core.logout') }}" class="block text-center hover:text-yellow-300">Logout</a></li>
     </ul>
 </nav>
 
