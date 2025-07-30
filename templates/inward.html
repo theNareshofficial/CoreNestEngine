@@ -7,7 +7,7 @@
 <div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg">
     <h2 class="text-2xl font-semibold text-gray-800 mb-4">Inward Stock Entry</h2>
 
-    <form method="POST" action="{{ url_for('inward') }}">
+    <form method="POST" action="{{ url_for('inventory.inward') }}">
         <div class="mb-4">
             <label class="block text-gray-600 font-semibold">Product Name:</label>
             <input type="text" name="product_name" required
@@ -32,6 +32,12 @@
                 class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
         </div>
 
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">Dealer</label>
+            <input type="text" name="dealer" required
+                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+
         <button type="submit" class="mt-4 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add
             Stock</button>
     </form>
@@ -46,16 +52,19 @@
                     <th class="p-3">Rate</th>
                     <th class="p-3">Price</th>
                     <th class="p-3">Added At</th>
+                    <th class="p-3">User</th>
+                    <th class="p-3">Dealer</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in inward_stock %}
                 <tr class="text-center border-b hover:bg-gray-100">
-                    <td class="p-3">{{ item.product_name }}</td>
-                    <td class="p-3">{{ item.quantity }}</td>
-                    <td class="p-3">₹{{ item.rate }}</td>
-                    <td class="p-3">₹{{ item.price }}</td>
-                    <td class="p-3">{{ item.added_at }}</td>
+                    <td class="p-6">{{ item.product_name }}</td>
+                    <td class="p-6">{{ item.quantity }}</td>
+                    <td class="p-6">₹{{ item.rate }}</td>
+                    <td class="p-6">₹{{ item.price }}</td>
+                    <td class="p-6">{{ item.added_at }}</td>
+                    <td class="p-6">{{ item.user }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
