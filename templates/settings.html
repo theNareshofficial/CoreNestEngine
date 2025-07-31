@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+{% include 'navbar.html' %}
+
+<div class="max-w-7xl mx-auto p-6 bg-gray-50 space-y-12">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800">⚙️ Admin Settings</h1>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">👤 User Accounts</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-3 text-left">Username</th>
+                        <th class="border p-3 text-left">Phone Number</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in user_accounts %}
+                    <tr class="hover:bg-gray-100">
+                        <td class="border p-3">{{ user.username }}</td>
+                        <td class="border p-3">{{ user.number }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" class="text-center p-4">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">🕒 User Activity Log</h2>
+        <div class="overflow-x-auto max-h-96">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-3 text-left">Username</th>
+                        <th class="border p-3 text-left">Action</th>
+                        <th class="border p-3 text-left">Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in activity_logs %}
+                    <tr class="hover:bg-gray-100">
+                        <td class="border p-3">{{ log.user }}</td>
+                        <td class="border p-3">
+                            <span class="px-2 py-1 rounded-full text-sm
+                                {% if log.action == 'login' %} bg-green-100 text-green-800 {% else %} bg-red-100 text-red-800 {% endif %}">
+                                {{ log.action | capitalize }}
+                            </span>
+                        </td>
+                        <td class="border p-3">{{ log.timestamp.strftime('%d-%b-%Y %I:%M %p') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center p-4">No activity logs found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">💰 Daily Sales Totals</h2>
+        <div class="overflow-x-auto max-h-96">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-3 text-left">Date</th>
+                        <th class="border p-3 text-right">Total Sales</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in daily_sales %}
+                    <tr class="hover:bg-gray-100">
+                        <td class="border p-3">{{ sale._id }}</td>
+                        <td class="border p-3 text-right font-semibold text-green-700">
+                            ₹{{ "%.2f"|format(sale.total_sales) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="2" class="text-center p-4">No sales data found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
