@@ -1,14 +1,12 @@
 {% extends "base.html" %}
-
 {% block content %}
-
 {% include 'navbar.html' %}
 
 <div class="max-w-4xl mx-auto bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-xl shadow-2xl">
   <h2 class="text-3xl font-bold text-gray-800 mb-4 flex items-center gap-2">🧾 Billing Page</h2>
 
   <!-- Customer Details -->
-  <form method="POST" action="{{ url_for('billing_page') }}">
+  <form method="POST" action="{{ url_for('billing.billing_page') }}">
     <div class="mb-4">
       <label class="block text-gray-600 font-semibold">👤 Customer Name:</label>
       <input type="text" name="customer_name" required
