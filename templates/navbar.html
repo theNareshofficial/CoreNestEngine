@@ -5,41 +5,64 @@
             <span>CoreNestEngine</span>
         </a>
 
-        <ul class="hidden lg:flex space-x-6 text-xl">
-            <li><a href="{{ url_for('core.home') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">🏠Home</a></li>
-            <li><a href="{{ url_for('inventory.dashboard') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">📊Dashboard</a></li>
-            <li><a href="{{ url_for('billing.billing_page') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">💳Billing</a></li>
-            <li><a href="{{ url_for('inventory.inward') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">📥Inward</a></li>
-            <li><a href="{{ url_for('billing.bill_detail') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">🔍Search Bill</a></li>
-            <li><a href="{{ url_for('core.settings') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">⚙️Settings</a></li>
-            <li><a href="{{ url_for('auth.logout') }}" class="flex items-center space-x-1 px-3 py-1 bg-red-500 text-white rounded-full hover:bg-red-700 transition-all">
+        <div class="hidden lg:flex items-center space-x-4 text-lg">
+            <a href="{{ url_for('core.home') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">🏠 Home</a>
+            <a href="{{ url_for('inventory.dashboard') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">📊 Dashboard</a>
+            <a href="{{ url_for('billing.billing_page') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">💳 Billing</a>
+            <a href="{{ url_for('inventory.inward') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">📥 Inward</a>
+            <a href="{{ url_for('billing.bill_detail') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">🔍 Search Bill</a>
+
+            <div class="relative">
+                <button id="settings-btn" class="flex items-center px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                    <span>⚙️ Settings</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1">
+                        <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <div id="settings-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden">
+                    <a href="{{ url_for('core.user_accounts') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">User Accounts</a>
+                    <a href="{{ url_for('core.activity_log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">Activity Log</a>
+                    <a href="{{ url_for('core.daily_sales') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">Daily Sales</a>
+                </div>
+            </div>
+
+            <a href="{{ url_for('auth.logout') }}" class="flex items-center space-x-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-700 transition-all">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                     <path fill-rule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                </svg><!-- <span>Logout</span> --></a>
-            </li>
-        </ul>
+                </svg>
+                <!-- <span>Logout</span> -->
+            </a>
+        </div>
 
         <button id="menu-btn" class="lg:hidden focus:outline-none">
             <span class="text-2xl">&#9776;</span>
         </button>
     </div>
 
-    <ul id="mobile-menu" class="hidden flex-col space-y-4 p-4 bg-gray-700 mt-2 lg:hidden rounded-lg shadow-md">
-        <li><a href="{{ url_for('core.home') }}" class="block text-center hover:text-yellow-300">🏠Home</a></li>
-        <li><a href="{{ url_for('inventory.dashboard') }}" class="block text-center hover:text-yellow-300">📊Dashboard</a></li>
-        <li><a href="{{ url_for('billing.billing_page') }}" class="block text-center hover:text-yellow-300">💳Billing</a></li>
-        <li><a href="{{ url_for('inventory.inward') }}" class="block text-center hover:text-yellow-300">📥Inward</a></li>
-        <li><a href="{{ url_for('billing.bill_detail') }}" class="block text-center hover:text-yellow-300">🔍Search Bill</a></li>
-        <li><a href="{{ url_for('core.settings') }}" class="px-2 py-1 bg-blue-500 rounded-md hover:bg-blue-700">⚙️Settings</a></li>
-        <li><a href="{{ url_for('auth.logout') }}" class="block text-center hover:text-yellow-300">Logout</a></li>
-    </ul>
+    <div id="mobile-menu" class="hidden lg:hidden">
+        </div>
 </nav>
 
 <script>
+    // --- Mobile Menu Toggle ---
     const menuBtn = document.getElementById("menu-btn");
     const mobileMenu = document.getElementById("mobile-menu");
-
     menuBtn.addEventListener("click", () => {
         mobileMenu.classList.toggle("hidden");
+    });
+
+    // --- Settings Dropdown Toggle (Desktop) ---
+    const settingsBtn = document.getElementById("settings-btn");
+    const settingsMenu = document.getElementById("settings-menu");
+
+    settingsBtn.addEventListener("click", () => {
+        settingsMenu.classList.toggle("hidden");
+    });
+
+    // Close dropdown if user clicks outside of it
+    window.addEventListener("click", function(event) {
+        if (!settingsBtn.contains(event.target)) {
+            settingsMenu.classList.add("hidden");
+        }
     });
 </script>
