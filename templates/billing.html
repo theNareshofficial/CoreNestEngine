@@ -3,114 +3,114 @@
 {% include 'navbar.html' %}
 
 <div class="max-w-4xl mx-auto bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-xl shadow-2xl">
-  <h2 class="text-3xl font-bold text-gray-800 mb-4 flex items-center gap-2">🧾 Billing Page</h2>
+    <h2 class="text-3xl font-bold text-gray-800 mb-4 flex items-center gap-2">🧾 Billing Page</h2>
 
-  <!-- Customer Details -->
-  <form method="POST" action="{{ url_for('billing.billing_page') }}">
-    <div class="mb-4">
-      <label class="block text-gray-600 font-semibold">👤 Customer Name:</label>
-      <input type="text" name="customer_name" required
-        class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-    </div>
+    <form method="POST" action="{{ url_for('billing.billing_page') }}">
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">👤 Customer Name:</label>
+            <input type="text" name="customer_name" required class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-600 font-semibold">📱 Mobile Number:</label>
+            <input type="text" name="mobile_number" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        </div>
 
-    <div class="mb-4">
-      <label class="block text-gray-600 font-semibold">📱 Mobile Number:</label>
-      <input type="text" name="mobile_number"
-        class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-    </div>
+        <h2 class="text-xl font-semibold text-gray-800 mb-2">🛒 Add Products to Bill</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full bg-white shadow-md rounded-lg border border-gray-300">
+                <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                    <tr>
+                        <th class="p-3">📦 Product Name</th>
+                        <th class="p-3">💲 Sale Price</th>
+                        <th class="p-3">🔢 Quantity</th>
+                        <th class="p-3">💸 Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in stock_items %}
+                    <tr class="text-center border-b hover:bg-green-100 transition duration-200">
+                        <td class="p-3">{{ item.product_name }}</td>
+                        <td class="p-3 font-semibold text-blue-700">₹{{ item.price }}</td>
+                        <td class="p-3">
+                            {% if item.quantity > 0 %}
+                            <input
+                                type="number"
+                                name="quantity_{{ item.product_name }}"
+                                min="0"
+                                value="0"
+                                class="quantity-input px-2 py-1 border rounded-md w-20 text-center bg-gray-50"
+                                data-product-name="{{ item.product_name|e }}"
+                                data-price="{{ item.price }}"
+                                data-max-stock="{{ item.quantity }}"
+                            />
+                            <small class="text-gray-500 block">Stock: {{ item.quantity }}</small>
+                            <small id="warning_{{ item.product_name|e }}" class="text-red-500 hidden">⚠️ Exceeds Stock!</small>
+                            {% else %}
+                            <input type="number" disabled value="0" class="px-2 py-1 border rounded-md w-20 text-center bg-gray-200 cursor-not-allowed" />
+                            <small class="text-red-500 font-semibold">❌ Out of Stock</small>
+                            {% endif %}
+                        </td>
+                        <td class="p-3 font-bold text-green-700">₹<span id="total_{{ item.product_name|e }}">0.00</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Product Selection -->
-    <h2 class="text-xl font-semibold text-gray-800 mb-2">🛒 Add Products to Bill</h2>
-    <div class="overflow-x-auto">
-      <table class="w-full bg-white shadow-md rounded-lg border border-gray-300">
-        <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <tr>
-            <th class="p-3">📦 Product Name</th>
-            <th class="p-3">💲 Sale Price</th>
-            <th class="p-3">🔢 Quantity</th>
-            <th class="p-3">💸 Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in stock_items %}
-          <tr class="text-center border-b hover:bg-green-100 transition duration-200">
-            <td class="p-3">{{ item.product_name }}</td>
-        
-            <td class="p-3 font-semibold text-blue-700">₹{{ item.price }}</td>
-        
-            <td class="p-3">
-              {% if item.quantity > 0 %}
-              <input
-                type="number"
-                name="quantity_{{ item.product_name }}"
-                min="0"
-                value="0"
-                class="px-2 py-1 border rounded-md w-16 text-center bg-gray-50"
-                oninput="checkQuantity('{{ item.product_name|e }}', parseFloat('{{ item.price }}'), {{ item.quantity }})"
-              />
-              <small class="text-gray-500 block">Stock: <span id="stock_{{ item.product_name }}">{{ item.quantity }}</span></small>
-              <small id="warning_{{ item.product_name }}" class="text-red-500 hidden">⚠️ Exceeds Stock!</small>
-              {% else %}
-              <input type="number" disabled value="0" class="px-2 py-1 border rounded-md w-16 text-center bg-gray-200 cursor-not-allowed" />
-              <small class="text-red-500 font-semibold">❌ Out of Stock</small>
-              {% endif %}
-            </td>
-            
-        
-            <td class="p-3 font-bold text-green-700">₹<span id="total_{{ item.product_name }}">0.00</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        
-      </table>
-    </div>
+        <div class="mt-6 text-right">
+            <h3 class="text-2xl font-bold text-gray-800">💰 Total Amount: ₹<span id="final_total" class="text-green-700">0.00</span></h3>
+        </div>
 
-    <!-- Final Total -->
-    <div class="mt-6 text-right">
-      <h3 class="text-2xl font-bold text-gray-800">💰 Total Amount: ₹<span id="final_total" class="text-green-700">0.00</span></h3>
-    </div>
-
-    <!-- Submit Button -->
-    <button type="submit" class="mt-4 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-md hover:from-green-500 hover:to-green-600 shadow-md transition duration-200">
-      ✅ Generate Bill
-    </button>
-  </form>
+        <button type="submit" class="mt-4 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-md hover:from-green-500 hover:to-green-600 shadow-md">
+            ✅ Generate Bill
+        </button>
+    </form>
 </div>
 
 <script>
-  function checkQuantity(productName, salePrice, maxStock) {
-    const quantityInput = document.querySelector(`input[name='quantity_${productName}']`);
-    const quantity = parseInt(quantityInput.value) || 0;
+document.addEventListener("DOMContentLoaded", function() {
+    const quantityInputs = document.querySelectorAll('.quantity-input');
 
-    const totalPrice = quantity * salePrice;
-    const totalElement = document.getElementById(`total_${productName}`);
-    const stockElement = document.getElementById(`stock_${productName}`);
-    const warningElement = document.getElementById(`warning_${productName}`);
-
-    // Update total price
-    totalElement.innerText = totalPrice.toFixed(2);
-
-    // Check if quantity exceeds stock
-    if (quantity > maxStock) {
-      quantityInput.value = maxStock; // Reset to max stock
-      totalElement.innerText = (maxStock * salePrice).toFixed(2);
-      warningElement.classList.remove("hidden");
-    } else {
-      warningElement.classList.add("hidden");
+    // This function will calculate the grand total from all item totals
+    function updateFinalTotal() {
+        let finalTotal = 0;
+        document.querySelectorAll("span[id^='total_']").forEach(span => {
+            finalTotal += parseFloat(span.innerText) || 0;
+        });
+        document.getElementById("final_total").innerText = finalTotal.toFixed(2);
     }
 
-    // Update final total
-    updateFinalTotal();
-  }
+    // Add an event listener to each quantity input field
+    quantityInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            // Get the data stored in the element's data-* attributes
+            const productName = this.dataset.productName;
+            const price = parseFloat(this.dataset.price);
+            const maxStock = parseInt(this.dataset.maxStock);
 
-  function updateFinalTotal() {
-    let finalTotal = 0;
-    document.querySelectorAll("[id^='total_']").forEach((element) => {
-      finalTotal += parseFloat(element.innerText);
+            let quantity = parseInt(this.value) || 0;
+
+            const totalElement = document.getElementById(`total_${productName}`);
+            const warningElement = document.getElementById(`warning_${productName}`);
+            
+            // Check if quantity exceeds stock and show/hide warning
+            if (quantity > maxStock) {
+                quantity = maxStock; // Cap the quantity at the max stock
+                this.value = maxStock; // Update the input field visually
+                warningElement.classList.remove('hidden');
+            } else {
+                warningElement.classList.add('hidden');
+            }
+
+            // Update the total for this specific item
+            const itemTotal = quantity * price;
+            totalElement.innerText = itemTotal.toFixed(2);
+
+            // After updating the item total, recalculate the grand total
+            updateFinalTotal();
+        });
     });
-    document.getElementById("final_total").innerText = finalTotal.toFixed(2);
-  }
+});
 </script>
-
 
 {% endblock %}
