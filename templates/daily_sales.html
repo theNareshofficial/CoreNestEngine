@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+{% include 'navbar.html' %}
+<div class="max-w-4xl mx-auto p-6 bg-gray-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">💰 Daily Sales Report</h1>
+        <div class="overflow-x-auto max-h-[70vh]">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-3 text-left">Date</th>
+                        <th class="border p-3 text-right">Total Sales</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sale in daily_sales %}
+                    <tr class="hover:bg-gray-100">
+                        <td class="border p-3">{{ sale._id }}</td>
+                        <td class="border p-3 text-right font-semibold text-green-700">₹{{ "%.2f"|format(sale.total_sales) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center p-4">No sales data found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
