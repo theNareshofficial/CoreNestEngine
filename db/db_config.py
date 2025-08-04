@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import MongoClient, DESCENDING
 
 try:
     client = MongoClient("mongodb://localhost:27017/")
@@ -8,7 +8,8 @@ try:
     inward_info = db["inward_info"]       # Inward Stock Info
     bill_collection_data = db["bill_collection_data"]  # Individual Bill Items
     sales_history = db["sales_history"]  # Track daily sales
-    logs = db["logs"]  # Ensure this matches your actual collection name
+    logs = db["logs"]
+    collection = db["internet_logs"]
 
     
     print("✅ MongoDB Connected Successfully!")
