@@ -4,6 +4,7 @@ from modules.auth.session import SESSION
 from db.db_config import sales_history, reg_info, logs
 from datetime import datetime, time, timedelta
 from pymongo import DESCENDING
+import subprocess
 
 core_bp = Blueprint('core', __name__)
 
@@ -106,3 +107,37 @@ def daily_sales():
     ]
     sales_data = list(sales_history.aggregate(pipeline))
     return render_template("daily_sales.html", daily_sales=sales_data)
+
+@core_bp.route('/update_app', methods=['POST'])
+@SESSION.login_required
+def update_app():
+    
+    SESSION.check_session_timeout()
+    
+    script_path = "scripts/update.py"
+    
+    python_executable = "python"
+    
+    process = subprocess.run(
+        [python_executable, script_path],
+        capture_output=True,
+        text=True,
+        encoding='utf-8'
+    )
+    
+    update_log = process.stdout + process.stderr
+    
+    return render_template("update_status.html", update_log=update_log)
+
+@core_bp.route('/deleted_log')
+@SESSION.login_required
+def deleted_log():
+    """Displays a detailed log of all deleted items."""
+    SESSION.check_session_timeout()
+    
+    # Find all log entries where the action was 'deleted'
+    deleted_items = list(logs.find(
+        {"action": "deleted"}
+    ).sort("timestamp", DESCENDING))
+    
+    return render_template("deleted_log.html", deleted_logs=deleted_items)
