@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+{% include 'navbar.html' %}
+<div class="max-w-7xl mx-auto p-6 bg-gray-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">🗑️ Deleted Items Log</h1>
+        <div class="overflow-x-auto max-h-[70vh]">
+            <table class="min-w-full border-collapse">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="border p-3 text-left">Product Name</th>
+                        <th class="border p-3 text-left">Quantity</th>
+                        <th class="border p-3 text-right">Rate</th>
+                        <th class="border p-3 text-right">Price</th>
+                        <th class="border p-3 text-left">Dealer</th>
+                        <th class="border p-3 text-left">Date & Time</th>
+                        <th class="border p-3 text-left">User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in deleted_logs %}
+                    <tr class="hover:bg-gray-100">
+                        <td class="border p-3">{{ log.product_name }}</td>
+                        <td class="border p-3">{{ log.quantity }}</td>
+                        <td class="border p-3 text-right">₹{{ "%.2f"|format(log.details.rate) }}</td>
+                        <td class="border p-3 text-right">₹{{ "%.2f"|format(log.details.price) }}</td>
+                        <td class="border p-3">{{ log.details.dealer }}</td>
+                        <td class="border p-3">{{ log.timestamp.strftime('%d-%b-%Y %I:%M %p') }}</td>
+                        <td class="border p-3"> {{ log.user }} </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center p-4">No deleted items found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
