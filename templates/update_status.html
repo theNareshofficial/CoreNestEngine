@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+{% include 'navbar.html' %}
+
+<div class="max-w-4xl mx-auto p-6 bg-gray-50">
+    <div class="bg-white p-6 rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">🚀 Application Update Status</h1>
+        
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">Update Log:</h2>
+        <pre class="bg-gray-900 text-white text-sm p-4 rounded-md overflow-x-auto">{{ update_log }}</pre>
+        
+        <div class="mt-6">
+            <h3 class="text-lg font-semibold text-red-600">Important Note:</h3>
+            <p class="text-gray-700 mt-2">
+                If the update was successful, the application server needs to be restarted for the changes to take effect.
+                In a development environment (like the one you are running), this often happens automatically. In a production environment, this would need to be done manually.
+            </p>
+        </div>
+
+        <a href="{{ url_for('core.home') }}" class="inline-block mt-6 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+            &larr; Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}
