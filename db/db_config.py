@@ -1,17 +1,59 @@
-from pymongo import MongoClient, DESCENDING
+# db/db_config.py
+"""
+Database configuration and export module.
+Now powered by SQLite (built-in, zero external server dependencies).
+"""
 
-try:
-    client = MongoClient("mongodb://localhost:27017/")
-    db = client["stock_db"]
-    
-    reg_info = db["reg_info"]             # User Registration Info
-    inward_info = db["inward_info"]       # Inward Stock Info
-    bill_collection_data = db["bill_collection_data"]  # Individual Bill Items
-    sales_history = db["sales_history"]  # Track daily sales
-    logs = db["logs"]
-    collection = db["internet_logs"]
+from db.database import (
+    get_db,
+    init_db,
+    close_db,
+    get_user_by_username,
+    create_user,
+    get_all_users,
+    log_event,
+    get_activity_logs,
+    get_deleted_logs,
+    get_logs_for_product,
+    get_inventory,
+    get_inventory_item,
+    get_inventory_item_by_name,
+    add_inward_stock,
+    update_inventory_stock,
+    get_available_stock,
+    create_bill,
+    get_bill,
+    get_recent_bills,
+    update_bill,
+    get_sales_stats,
+    get_sales_by_product,
+    get_daily_sales_history,
+    seed_sample_data
+)
 
-    
-    print("✅ MongoDB Connected Successfully!")
-except Exception as e:
-    print("❌ MongoDB Connection Error:", str(e))
+__all__ = [
+    "get_db",
+    "init_db",
+    "close_db",
+    "get_user_by_username",
+    "create_user",
+    "get_all_users",
+    "log_event",
+    "get_activity_logs",
+    "get_deleted_logs",
+    "get_logs_for_product",
+    "get_inventory",
+    "get_inventory_item",
+    "get_inventory_item_by_name",
+    "add_inward_stock",
+    "update_inventory_stock",
+    "get_available_stock",
+    "create_bill",
+    "get_bill",
+    "get_recent_bills",
+    "update_bill",
+    "get_sales_stats",
+    "get_sales_by_product",
+    "get_daily_sales_history",
+    "seed_sample_data"
+]
