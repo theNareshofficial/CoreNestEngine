@@ -1,123 +1,105 @@
 # modules/routes/inventory_routes.py
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
 from modules.auth.session import SESSION
-from db.db_config import inward_info, logs
-from datetime import datetime
-from bson.objectid import ObjectId
+from db.database import (
+    get_inventory,
+    get_inventory_item,
+    add_inward_stock,
+    update_inventory_stock,
+    get_logs_for_product
+)
 
 inventory_bp = Blueprint('inventory', __name__)
+
 
 @inventory_bp.route('/dashboard', methods=['GET'])
 @SESSION.login_required
 def dashboard():
-    SESSION.check_session_timeout()
-    search_query = request.args.get('search', '')
-
-    query = {}
-    if search_query:
-        query = {"product_name": {"$regex": search_query, "$options": "i"}}
-    
-    stock_items = list(inward_info.find(query))
-    for item in stock_items:
-        item['_id'] = str(item['_id'])
-        
+    search_query = request.args.get('search', '').strip()
+    stock_items = get_inventory(search_query=search_query if search_query else None)
     return render_template("dashboard.html", inward_stock=stock_items, search_query=search_query)
 
 
 @inventory_bp.route('/inward', methods=['GET', 'POST'])
 @SESSION.login_required
 def inward():
-    SESSION.check_session_timeout()
     if request.method == "POST":
-        
-        inward_data = {
-            "product_name": request.form.get("product_name", "").strip().capitalize(),
-            "dealer": request.form.get("dealer", "").strip().capitalize(),
-            "quantity": int(request.form.get("quantity", "0").strip()),
-            "rate": float(request.form.get("rate", "0").strip()),
-            "price": float(request.form.get("price", "0").strip()),
-            "user": SESSION.get_current_user(),
-            "added_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        inward_info.insert_one(inward_data)
-        flash("Inward stock added successfully!", "success")
+        product_name = request.form.get("product_name", "").strip()
+        dealer = request.form.get("dealer", "").strip()
+        quantity_str = request.form.get("quantity", "0").strip()
+        rate_str = request.form.get("rate", "0").strip()
+        price_str = request.form.get("price", "0").strip()
+
+        if not product_name:
+            flash("Product name cannot be empty!", "error")
+            return redirect(url_for("inventory.inward"))
+
+        try:
+            quantity = int(quantity_str)
+            rate = float(rate_str)
+            price = float(price_str)
+        except ValueError:
+            flash("Invalid quantity, rate, or price! Please enter valid numbers.", "error")
+            return redirect(url_for("inventory.inward"))
+
+        if quantity <= 0:
+            flash("Quantity must be greater than zero.", "error")
+            return redirect(url_for("inventory.inward"))
+
+        if rate < 0 or price < 0:
+            flash("Rate and Price cannot be negative.", "error")
+            return redirect(url_for("inventory.inward"))
+
+        user = SESSION.get_current_user() or "System"
+        add_inward_stock(
+            product_name=product_name,
+            dealer=dealer,
+            quantity=quantity,
+            rate=rate,
+            price=price,
+            user=user
+        )
+
+        flash(f"Inward stock for '{product_name}' ({quantity} units) added successfully!", "success")
         return redirect(url_for("inventory.inward"))
 
-    stock_items = list(inward_info.find())
+    stock_items = get_inventory()
     return render_template("inward.html", inward_stock=stock_items)
 
-def log_stock_change(user, product_id, product_name, action, quantity):
-
-    logs.insert_one({
-        "dealer": dealer,
-        "user": user,
-        "product_id": ObjectId(product_id),
-        "product_name": product_name,
-        "action": action,
-        "quantity": quantity,
-        "timestamp": datetime.now(),
-    })
 
 @inventory_bp.route('/update_stock/<item_id>', methods=['POST'])
 @SESSION.login_required
 def update_stock(item_id):
-    user = SESSION.get_current_user()
-    data = request.get_json()
-    
+    user = SESSION.get_current_user() or "System"
+    data = request.get_json(silent=True) or {}
+
     try:
         quantity_change = int(data.get("quantity", 0))
     except (TypeError, ValueError):
-        return jsonify({"status": "error", "message": "Invalid quantity!"}), 400
+        return jsonify({"status": "error", "message": "Invalid quantity provided!"}), 400
 
     if quantity_change == 0:
         return jsonify({"status": "error", "message": "Quantity cannot be zero."}), 400
 
-    item = inward_info.find_one({"_id": ObjectId(item_id)})
-    if not item:
-        return jsonify({"status": "error", "message": "Item not found."}), 404
+    try:
+        int_item_id = int(item_id)
+    except ValueError:
+        return jsonify({"status": "error", "message": "Invalid item ID format."}), 400
 
-    # ... (rest of the quantity check logic) ...
+    success, message = update_inventory_stock(int_item_id, quantity_change, user)
+    if not success:
+        return jsonify({"status": "error", "message": message}), 400
 
-    # Update stock
-    inward_info.update_one({"_id": ObjectId(item_id)}, {"$inc": {"quantity": quantity_change}})
-    
-    # Log the action, passing the full 'item' document when deleting
-    action = "added" if quantity_change > 0 else "deleted"
-    log_stock_change(user, item_id, item['product_name'], action, abs(quantity_change), item) # Pass 'item' here
-    
-    message = f"✅ {abs(quantity_change)} stock {'added to' if action == 'added' else 'removed from'} '{item['product_name']}'."
-    return jsonify({"status": "success", "message": message})
+    return jsonify({"status": "success", "message": f"✅ {message}"})
 
 
 @inventory_bp.route("/view_logs/<item_id>")
 @SESSION.login_required
 def view_logs(item_id):
-    product_logs = list(logs.find({"product_id": ObjectId(item_id)}).sort("timestamp", -1))
+    try:
+        int_item_id = int(item_id)
+    except ValueError:
+        return jsonify({"status": "error", "message": "Invalid item ID", "logs": []}), 400
 
-    for log in product_logs:
-        log['_id'] = str(log['_id'])
-        log['product_id'] = str(log['product_id'])
-        log['timestamp'] = log['timestamp'].strftime("%Y-%m-%d %H:%M:%S")
-        
+    product_logs = get_logs_for_product(int_item_id)
     return jsonify({"status": "success", "logs": product_logs})
-
-
-def log_stock_change(user, product_id, product_name, action, quantity, item_details={}):
-    """Helper function to create consistent logs."""
-    log_entry = {
-        "user": user,
-        "product_id": ObjectId(product_id),
-        "product_name": product_name,
-        "action": action,
-        "quantity": quantity,
-        "timestamp": datetime.now()
-    }
-    # If the action is 'deleted', add the extra item details
-    if action == 'deleted':
-        log_entry['details'] = {
-            "rate": item_details.get('rate'),
-            "price": item_details.get('price'),
-            "dealer": item_details.get('dealer', 'N/A'),
-            "user": user
-        }
-    logs.insert_one(log_entry)
