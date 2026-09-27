@@ -1,96 +1,86 @@
 # modules/routes/billing_routes.py
+from datetime import datetime
 from flask import Blueprint, render_template, request, flash, redirect, url_for, make_response
 from modules.auth.session import SESSION
-from db.db_config import inward_info, bill_collection_data, sales_history, logs
-from datetime import datetime
-from bson.objectid import ObjectId
-from pymongo import DESCENDING
-from io import BytesIO
-from xhtml2pdf import pisa
-import random
+from db.database import (
+    get_available_stock,
+    get_inventory_item_by_name,
+    create_bill,
+    get_bill,
+    get_recent_bills,
+    update_bill as db_update_bill
+)
 
 billing_bp = Blueprint('billing', __name__)
+
 
 @billing_bp.route("/billing", methods=['GET', 'POST'])
 @SESSION.login_required
 def billing_page():
-    SESSION.check_session_timeout()
     if request.method == 'POST':
-        # ... (rest of your billing creation logic is correct)
-        customer_name = request.form.get("customer_name", "").strip().capitalize()
+        customer_name = request.form.get("customer_name", "").strip()
+        mobile_number = request.form.get("mobile_number", "").strip()
+        user = SESSION.get_current_user() or "System"
+
         items_to_bill = []
-        total_amount = 0
         for key, quantity_str in request.form.items():
             if key.startswith("quantity_"):
                 product_name = key.replace("quantity_", "")
-                quantity = int(quantity_str)
+                try:
+                    quantity = int(quantity_str.strip())
+                except ValueError:
+                    continue
+
                 if quantity > 0:
-                    item_data = inward_info.find_one({"product_name": product_name})
-                    if not item_data or quantity > item_data.get("quantity", 0):
-                        flash(f"Not enough stock for {product_name}!", "error")
+                    item_data = get_inventory_item_by_name(product_name)
+                    if not item_data:
+                        flash(f"Product '{product_name}' not found in inventory!", "error")
                         return redirect(url_for("billing.billing_page"))
-                    total = quantity * item_data.get("price", 0)
-                    total_amount += total
+
+                    if quantity > item_data.get("quantity", 0):
+                        flash(f"Not enough stock for '{product_name}'! Available: {item_data.get('quantity', 0)}", "error")
+                        return redirect(url_for("billing.billing_page"))
+
+                    sale_price = float(item_data.get("price", 0.0))
+                    total = quantity * sale_price
                     items_to_bill.append({
                         "product_name": product_name,
                         "quantity": quantity,
-                        "sale_price": item_data.get("price", 0),
+                        "sale_price": sale_price,
                         "total": total
                     })
-        if not items_to_bill:
-            flash("No items selected for billing.", "error")
-            return redirect(url_for("billing.billing_page"))
-        bill_number = f"BILL-{random.randint(1000, 9999)}"
-        bill_data = {
-            "user": SESSION.get_current_user(),
-            "bill_no": bill_number,
-            "bill_date": datetime.now(),
-            "customer_name": customer_name,
-            "mobile_number": request.form.get("mobile_number", "").strip(),
-            "items": items_to_bill,
-            "total_amount": total_amount
-        }
-        bill_collection_data.insert_one(bill_data)
-        sales_history.insert_one(bill_data)
-        for item in items_to_bill:
-            inward_info.update_one(
-                {"product_name": item["product_name"]},
-                {"$inc": {"quantity": -item["quantity"]}}
-            )
-        return render_template("bill_template.html", bill_data=bill_data)
 
-    stock_items = list(inward_info.find({"quantity": {"$gt": 0}}))
+        if not items_to_bill:
+            flash("No items selected for billing. Please enter quantity for at least one item.", "error")
+            return redirect(url_for("billing.billing_page"))
+
+        try:
+            bill_data = create_bill(
+                customer_name=customer_name,
+                mobile_number=mobile_number,
+                items=items_to_bill,
+                user=user
+            )
+            flash(f"Bill #{bill_data['bill_no']} created successfully!", "success")
+            return render_template("bill_template.html", bill_data=bill_data)
+        except ValueError as e:
+            flash(str(e), "error")
+            return redirect(url_for("billing.billing_page"))
+
+    stock_items = get_available_stock()
     return render_template("billing.html", stock_items=stock_items)
 
 
 @billing_bp.route("/bill_detail", methods=["GET"])
 @SESSION.login_required
 def bill_detail():
-    SESSION.check_session_timeout()
     bill_no = request.args.get("bill_no", "").strip().upper()
     bill_data = None
 
     if bill_no:
-        bill_data = bill_collection_data.find_one({"bill_no": bill_no})
+        bill_data = get_bill(bill_no)
 
-    recent_bills = list(
-        bill_collection_data.find({}).sort("bill_date", DESCENDING).limit(25)
-    )
-
-    # Prepare safe dates for the template
-    for bill in recent_bills:
-        bill_date = bill.get('bill_date')
-        if isinstance(bill_date, datetime):
-            bill['formatted_date'] = bill_date.strftime('%d-%b-%Y')
-        else:
-            bill['formatted_date'] = bill_date
-
-    if bill_data:
-        bill_date = bill_data.get('bill_date')
-        if isinstance(bill_date, datetime):
-            bill_data['formatted_date'] = bill_date.strftime('%d-%b-%Y %I:%M %p')
-        else:
-            bill_data['formatted_date'] = bill_date
+    recent_bills = get_recent_bills(limit=25)
 
     return render_template(
         "bill_detail.html",
@@ -99,15 +89,14 @@ def bill_detail():
         bill_no=bill_no
     )
 
+
 @billing_bp.route("/edit_bill/<bill_no>", methods=["GET"])
 @SESSION.login_required
 def edit_bill(bill_no):
     """Displays the form to edit an existing bill."""
-    SESSION.check_session_timeout()
-    
-    bill_data = bill_collection_data.find_one({"bill_no": bill_no})
+    bill_data = get_bill(bill_no)
     if not bill_data:
-        flash(f"No bill found with number {bill_no}", "error")
+        flash(f"No bill found with number '{bill_no}'.", "error")
         return redirect(url_for('billing.bill_detail'))
 
     return render_template("edit_bill.html", bill_data=bill_data)
@@ -117,95 +106,65 @@ def edit_bill(bill_no):
 @SESSION.login_required
 def update_bill(bill_no):
     """Processes the form submission from the edit_bill page."""
-    SESSION.check_session_timeout()
+    user = SESSION.get_current_user() or "System"
 
-    old_bill = bill_collection_data.find_one({"bill_no": bill_no})
-    if not old_bill:
-        flash("Bill not found!", "danger")
-        return redirect(url_for("billing.edit_bill", bill_no=bill_no))
-    
-    # --- Part 1: Calculate stock changes (Your existing logic is good) ---
-    old_items_map = {item["product_name"]: item["quantity"] for item in old_bill.get("items", [])}
     product_names = request.form.getlist("product_name[]")
     quantities = request.form.getlist("quantity[]")
     sale_prices = request.form.getlist("sale_price[]")
-    
+
+    if not product_names:
+        flash("A bill must contain at least one item.", "error")
+        return redirect(url_for("billing.edit_bill", bill_no=bill_no))
+
     new_items = []
-    new_total_amount = 0
-
     for i in range(len(product_names)):
-        product_name = product_names[i]
-        new_qty = int(quantities[i])
-        sale_price = float(sale_prices[i])
-        
+        p_name = product_names[i].strip()
+        try:
+            qty = int(quantities[i])
+            price = float(sale_prices[i])
+        except (ValueError, IndexError):
+            flash("Invalid quantity or price entered in the bill items!", "error")
+            return redirect(url_for("billing.edit_bill", bill_no=bill_no))
+
+        if qty <= 0:
+            flash(f"Quantity for '{p_name}' must be greater than zero.", "error")
+            return redirect(url_for("billing.edit_bill", bill_no=bill_no))
+
         new_items.append({
-            "product_name": product_name,
-            "quantity": new_qty,
-            "sale_price": sale_price,
-            "total": new_qty * sale_price
+            "product_name": p_name,
+            "quantity": qty,
+            "sale_price": price,
+            "total": qty * price
         })
-        new_total_amount += (new_qty * sale_price)
 
-        old_qty = old_items_map.get(product_name, 0)
-        stock_change = old_qty - new_qty
-        inward_info.update_one({"product_name": product_name}, {"$inc": {"quantity": stock_change}})
+    success, message = db_update_bill(bill_no, new_items, user)
+    if not success:
+        flash(message, "error")
+        return redirect(url_for("billing.edit_bill", bill_no=bill_no))
 
-    removed_products = set(old_items_map.keys()) - set(product_names)
-    for product_name in removed_products:
-        old_qty = old_items_map[product_name]
-        inward_info.update_one({"product_name": product_name}, {"$inc": {"quantity": old_qty}})
-    
-    # --- Part 2: Prepare the final update data ---
-    update_data = {
-        "items": new_items, 
-        "total_amount": new_total_amount, 
-        "last_edited": datetime.now()
-    }
-
-    # --- Part 3: Update BOTH collections with the same data ---
-    # Update the main bill record
-    bill_collection_data.update_one({"bill_no": bill_no}, {"$set": update_data})
-    
-    # ALSO, update the corresponding record in sales_history
-    sales_history.update_one({"bill_no": bill_no}, {"$set": update_data})
-
-    flash("Bill and sales history updated successfully!", "success")
+    flash("Bill and stock records updated successfully!", "success")
     return redirect(url_for("billing.bill_detail", bill_no=bill_no))
+
 
 @billing_bp.route("/generate_pdf/<bill_no>")
 @SESSION.login_required
 def generate_pdf(bill_no):
-    """Generates and serves a PDF for a given bill number."""
-    SESSION.check_session_timeout()
-
-    bill_data = bill_collection_data.find_one({"bill_no": bill_no})
+    """Generates and serves a PDF for a given bill number using WeasyPrint."""
+    bill_data = get_bill(bill_no)
     if not bill_data:
-        flash(f"Bill {bill_no} not found.", "error")
+        flash(f"Bill '{bill_no}' not found.", "error")
         return redirect(url_for('billing.bill_detail'))
 
-    # FIX: Prepare a safe, pre-formatted date string for the template
-    bill_date = bill_data.get('bill_date')
-    if isinstance(bill_date, datetime):
-        bill_data['formatted_date'] = bill_date.strftime('%B %d, %Y, %I:%M %p')
-    else:
-        # If it's already a string, just use it
-        bill_data['formatted_date'] = bill_date
-
     rendered_html = render_template("bill_pdf_template.html", bill_data=bill_data)
-    
-    # ... (rest of your PDF generation code)
-    pdf_result = BytesIO()
-    pisa_status = pisa.CreatePDF(
-        src=BytesIO(rendered_html.encode("UTF-8")),
-        dest=pdf_result
-    )
 
-    if pisa_status.err:
-        return "Error creating PDF", 500
+    try:
+        import weasyprint
+        pdf_bytes = weasyprint.HTML(string=rendered_html).write_pdf()
 
-    pdf_result.seek(0)
-    response = make_response(pdf_result.read())
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=bill_{bill_no}.pdf'
-    
-    return response
+        response = make_response(pdf_bytes)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=bill_{bill_no}.pdf'
+        return response
+    except Exception as e:
+        flash(f"Failed to generate PDF: {str(e)}", "error")
+        return redirect(url_for("billing.bill_detail", bill_no=bill_no))
