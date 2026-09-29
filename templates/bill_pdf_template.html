@@ -77,7 +77,14 @@
     <table class="bill-info">
         <tr>
             <td class="label">Bill Number:</td>
-            <td>{{ bill_data.bill_no }}</td>
+            <td>
+                {{ bill_data.bill_no }}
+                {% if bill_data.is_edited or bill_data.last_edited %}
+                <span style="display: inline-block; background-color: #fef3c7; color: #92400e; border: 1px solid #fcd34d; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">
+                    [Edited]
+                </span>
+                {% endif %}
+            </td>
         </tr>
         <tr>
             <td class="label">Customer:</td>
@@ -85,7 +92,12 @@
         </tr>
         <tr>
             <td class="label">Date:</td>
-            <td>{{ bill_data.formatted_date }}</td>
+            <td>
+                {{ bill_data.formatted_date }}
+                {% if bill_data.is_edited and bill_data.formatted_last_edited %}
+                <span style="font-size: 11px; color: #78350f; margin-left: 8px;">(Last Edited: {{ bill_data.formatted_last_edited }})</span>
+                {% endif %}
+            </td>
         </tr>
     </table>
 
