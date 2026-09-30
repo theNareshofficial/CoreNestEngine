@@ -3,46 +3,69 @@
 {% block content %}
 {% include 'navbar.html' %}
 
-<div class="min-h-screen bg-gray-100 p-6">
-    <div class="bg-white p-6 rounded-lg shadow-xl">
-        <h1 class="text-3xl font-bold text-gray-800">✏️ Edit Bill - {{ bill_data["bill_no"] }}</h1>
+<div class="min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8">
+    <div class="max-w-6xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-xl transition-all duration-300">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                <span>✏️</span> Edit Bill - {{ bill_data["bill_no"] }}
+            </h1>
+            <a href="{{ url_for('billing.billing_page') }}" class="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+                &larr; Back to Billing
+            </a>
+        </div>
 
         <form action="{{ url_for('billing.update_bill', bill_no=bill_data['bill_no']) }}" method="POST">
-            <table id="billTable" class="w-full border-collapse border border-gray-300 shadow-md rounded-lg overflow-hidden mt-4">
-                <thead class="bg-gray-200">
-                    <tr>
-                        <th class="border p-3">📌 Item Name</th>
-                        <th class="border p-3">🔢 Quantity</th>
-                        <th class="border p-3">💲 Sale Rate</th>
-                        <th class="border p-3">💸 Total Price</th>
-                        <th class="border p-3">❌ Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in bill_data["items"] %}
-                    <tr>
-                        <td class="border p-3"><input type="text" name="product_name[]" value="{{ item['product_name'] }}" required class="w-full p-2 border rounded-md"></td>
-                        <td class="border p-3">
-                            <input type="number" name="quantity[]" value="{{ item['quantity'] }}" required class="quantity-input w-full p-2 border rounded-md">
-                        </td>
-                        <td class="border p-3">
-                            <input type="number" name="sale_price[]" value="{{ item['sale_price'] }}" required class="sale-price w-full p-2 border rounded-md">
-                        </td>
-                        <td class="border p-3 font-semibold text-blue-600 total-price">₹{{ item["total"] }}</td>
-                        <td class="border p-3 text-center">
-                            <button type="button" onclick="removeRow(this)" class="bg-red-100 text-white px-3 py-1 rounded-md">❌</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <div class="mt-4">
-                <button type="button" onclick="addRow()" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">➕ Add Item</button>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table id="billTable" class="w-full text-left border-collapse bg-white">
+                    <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+                        <tr>
+                            <th class="p-3.5 border-b">📌 Item Name</th>
+                            <th class="p-3.5 border-b text-center w-32">🔢 Quantity</th>
+                            <th class="p-3.5 border-b text-right w-40">💲 Sale Rate (₹)</th>
+                            <th class="p-3.5 border-b text-right w-40">💸 Total Price</th>
+                            <th class="p-3.5 border-b text-center w-24">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 text-sm">
+                        {% for item in bill_data["items"] %}
+                        <tr class="hover:bg-gray-50 transition-colors duration-150">
+                            <td class="p-3">
+                                <input type="text" name="product_name[]" value="{{ item['product_name'] }}" required 
+                                       class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                            </td>
+                            <td class="p-3">
+                                <input type="number" name="quantity[]" value="{{ item['quantity'] }}" min="1" required 
+                                       class="quantity-input w-full p-2 border border-gray-300 rounded-md text-center focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                            </td>
+                            <td class="p-3">
+                                <input type="number" name="sale_price[]" value="{{ item['sale_price'] }}" step="0.01" min="0" required 
+                                       class="sale-price w-full p-2 border border-gray-300 rounded-md text-right focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                            </td>
+                            <td class="p-3 text-right font-bold text-blue-600 total-price">
+                                ₹{{ "%.2f"|format(item["total"]|float) }}
+                            </td>
+                            <td class="p-3 text-center">
+                                <button type="button" onclick="removeRow(this)" 
+                                        class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition-colors duration-150">
+                                    🗑️ Remove
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
 
-            <div class="mt-6">
-                <button type="submit" class="bg-blue-500 text-white px-6 py-3 rounded-md hover:bg-blue-600">💾 Save Changes</button>
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
+                <button type="button" onclick="addRow()" 
+                        class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-lg shadow-sm transition-colors duration-150 flex items-center justify-center gap-2">
+                    <span>➕</span> Add Item
+                </button>
+
+                <button type="submit" 
+                        class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-2.5 rounded-lg shadow-md transition-colors duration-150 flex items-center justify-center gap-2">
+                    <span>💾</span> Save Changes
+                </button>
             </div>
         </form>
     </div>
@@ -50,39 +73,63 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    document.querySelectorAll(".quantity-input").forEach(input => {
-        input.addEventListener("input", updateTotal);
-    });
+    const tbody = document.querySelector("#billTable tbody");
 
-    document.querySelectorAll(".sale-price").forEach(input => {
-        input.addEventListener("input", updateTotal);
+    // Unified event delegation for dynamic and existing rows
+    tbody.addEventListener("input", function(e) {
+        if (e.target.classList.contains("quantity-input") || e.target.classList.contains("sale-price")) {
+            updateTotal(e.target.closest("tr"));
+        }
     });
 });
 
-function updateTotal() {
-    let row = this.closest("tr");
-    let salePrice = parseFloat(row.querySelector(".sale-price").value) || 0;
-    let quantity = parseInt(row.querySelector(".quantity-input").value) || 0;
-    let totalField = row.querySelector(".total-price");
+function updateTotal(row) {
+    const salePrice = parseFloat(row.querySelector(".sale-price").value) || 0;
+    const quantity = parseInt(row.querySelector(".quantity-input").value) || 0;
+    const totalField = row.querySelector(".total-price");
+    
     totalField.innerText = "₹" + (salePrice * quantity).toFixed(2);
 }
 
 function removeRow(button) {
-    let row = button.closest("tr");
-    row.remove();
+    const row = button.closest("tr");
+    const tbody = row.parentElement;
+    
+    // Smooth fade out prior to removal
+    row.style.transition = "all 0.2s ease";
+    row.style.opacity = "0";
+    setTimeout(() => {
+        row.remove();
+    }, 200);
 }
 
 function addRow() {
-    let table = document.getElementById("billTable").getElementsByTagName("tbody")[0];
-    let newRow = table.insertRow();
-    
+    const tbody = document.querySelector("#billTable tbody");
+    const newRow = document.createElement("tr");
+    newRow.className = "hover:bg-gray-50 transition-colors duration-150";
+
     newRow.innerHTML = `
-        <td class="border p-3"><input type="text" name="product_name[]" required class="w-full p-2 border rounded-md"></td>
-        <td class="border p-3"><input type="number" name="quantity[]" value="1" required class="quantity-input w-full p-2 border rounded-md" oninput="updateTotal.call(this)"></td>
-        <td class="border p-3"><input type="number" name="sale_price[]" value="0" required class="sale-price w-full p-2 border rounded-md" oninput="updateTotal.call(this)"></td>
-        <td class="border p-3 font-semibold text-blue-600 total-price">₹0.00</td>
-        <td class="border p-3 text-center"><button type="button" onclick="removeRow(this)" class="bg-red-500 text-white px-3 py-1 rounded-md">❌</button></td>
+        <td class="p-3">
+            <input type="text" name="product_name[]" placeholder="Product name" required 
+                   class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </td>
+        <td class="p-3">
+            <input type="number" name="quantity[]" value="1" min="1" required 
+                   class="quantity-input w-full p-2 border border-gray-300 rounded-md text-center focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </td>
+        <td class="p-3">
+            <input type="number" name="sale_price[]" value="0.00" step="0.01" min="0" required 
+                   class="sale-price w-full p-2 border border-gray-300 rounded-md text-right focus:ring-2 focus:ring-blue-400 focus:outline-none">
+        </td>
+        <td class="p-3 text-right font-bold text-blue-600 total-price">₹0.00</td>
+        <td class="p-3 text-center">
+            <button type="button" onclick="removeRow(this)" 
+                    class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-semibold shadow-sm transition-colors duration-150">
+                🗑️ Remove
+            </button>
+        </td>
     `;
+    tbody.appendChild(newRow);
 }
 </script>
 
