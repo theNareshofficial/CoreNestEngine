@@ -3,61 +3,123 @@
 {% block content %}
 {% include 'navbar.html' %}
 
-<div class="max-w-6xl mx-auto p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl shadow-2xl">
-  <h2 class="text-3xl font-bold text-gray-800 mb-4">📊 Home - Sales Overview</h2>
+<div class="max-w-6xl mx-auto p-6 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl shadow-2xl mt-6">
+  <!-- Header -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-4 border-b border-gray-300">
+    <h1 class="text-3xl font-extrabold text-gray-800">📊 Sales Overview & Analytics</h1>
+    <span class="text-sm text-gray-500 font-medium mt-2 md:mt-0">Real-time Performance Metrics</span>
+  </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-    <div class="p-4 bg-blue-100 rounded-md shadow-md text-center">
-      <h3 class="text-xl font-semibold">📅 Today's Sales</h3>
-      <p class="text-2xl font-bold text-blue-700">{{ daily_total }}</p>
-      <p class="text-sm text-gray-600 mt-1">{{ daily_items_sold }} items sold</p>
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="p-6 bg-white rounded-xl shadow-md border-t-4 border-blue-500 text-center">
+      <h3 class="text-lg font-semibold text-gray-600">📅 Today's Sales</h3>
+      <p class="text-3xl font-extrabold text-blue-600 mt-2">{{ daily_total }}</p>
+      <p class="text-sm text-gray-500 mt-1 font-medium">{{ daily_items_sold }} units sold</p>
     </div>
-    <div class="p-4 bg-green-100 rounded-md shadow-md text-center">
-      <h3 class="text-xl font-semibold">📈 Weekly Sales</h3>
-      <p class="text-2xl font-bold text-green-700">{{ weekly_total }}</p>
-      <p class="text-sm text-gray-600 mt-1">{{ weekly_items_sold }} items sold</p>
+
+    <div class="p-6 bg-white rounded-xl shadow-md border-t-4 border-green-500 text-center">
+      <h3 class="text-lg font-semibold text-gray-600">📈 Weekly Sales</h3>
+      <p class="text-3xl font-extrabold text-green-600 mt-2">{{ weekly_total }}</p>
+      <p class="text-sm text-gray-500 mt-1 font-medium">{{ weekly_items_sold }} units sold</p>
     </div>
-    <div class="p-4 bg-yellow-100 rounded-md shadow-md text-center">
-      <h3 class="text-xl font-semibold">📅 Monthly Sales</h3>
-      <p class="text-2xl font-bold text-yellow-700">{{ monthly_total }}</p>
-      <p class="text-sm text-gray-600 mt-1">{{ monthly_items_sold }} items sold</p>
+
+    <div class="p-6 bg-white rounded-xl shadow-md border-t-4 border-yellow-500 text-center">
+      <h3 class="text-lg font-semibold text-gray-600">🗓️ Monthly Sales</h3>
+      <p class="text-3xl font-extrabold text-yellow-600 mt-2">{{ monthly_total }}</p>
+      <p class="text-sm text-gray-500 mt-1 font-medium">{{ monthly_items_sold }} units sold</p>
     </div>
   </div>
 
-  <h2 class="text-2xl font-semibold mb-2">📦 Products Sold Today</h2>
-  <table class="w-full bg-white shadow-md rounded-lg border border-gray-300 mb-6">
-    </table>
+  <!-- Analytics Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <!-- Products Sold Today -->
+    <div class="bg-white p-6 rounded-xl shadow-md">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span>📦</span> Products Sold Today
+      </h2>
+      <div class="overflow-x-auto max-h-80">
+        <table class="w-full border-collapse">
+          <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+            <tr>
+              <th class="p-3 text-left">Product Name</th>
+              <th class="p-3 text-right">Units Sold</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            {% for item in daily_sales %}
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="p-3 font-medium text-gray-800">{{ item.product_name }}</td>
+              <td class="p-3 text-right font-bold text-blue-600">{{ item.quantity_sold }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="2" class="p-6 text-center text-gray-500">
+                No products sold today yet.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-  <h2 class="text-2xl font-semibold mb-2">📊 Weekly Sales Chart</h2>
-  <canvas id="salesChart" class="mb-4"></canvas>
+    <!-- Weekly Sales Chart -->
+    <div class="bg-white p-6 rounded-xl shadow-md">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span>📊</span> Weekly Sales Trend
+      </h2>
+      <div class="h-64 flex items-center justify-center">
+        {% if weekly_sales %}
+          <canvas id="salesChart"></canvas>
+        {% else %}
+          <p class="text-gray-400">No weekly sales activity to display in chart.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    // Your Chart.js script remains the same
-    const ctx = document.getElementById("salesChart").getContext("2d");
+{% if weekly_sales %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const ctx = document.getElementById("salesChart");
+    if (!ctx) return;
+
     const weeklySales = {{ weekly_sales | tojson }};
     const labels = weeklySales.map(item => item.product_name);
     const data = weeklySales.map(item => item.quantity_sold);
 
-    new Chart(ctx, {
+    new Chart(ctx.getContext("2d"), {
       type: "bar",
       data: {
         labels: labels,
         datasets: [{
-          label: "Weekly Sales",
+          label: "Units Sold",
           data: data,
-          backgroundColor: "rgba(54, 162, 235, 0.6)",
-          borderColor: "rgba(54, 162, 235, 1)",
+          backgroundColor: "rgba(59, 130, 246, 0.7)",
+          borderColor: "rgba(37, 99, 235, 1)",
           borderWidth: 1,
-        }],
+          borderRadius: 6
+        }]
       },
       options: {
-        scales: {
-          y: { beginAtZero: true },
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
         },
-      },
+        scales: {
+          y: { 
+            beginAtZero: true,
+            ticks: { precision: 0 }
+          }
+        }
+      }
     });
-  </script>
-</div>
+  });
+</script>
+{% endif %}
 
 {% endblock %}
