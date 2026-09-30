@@ -2,76 +2,125 @@
 {% block content %}
 {% include 'navbar.html' %}
 
-<div class="max-w-4xl mx-auto bg-gradient-to-br from-gray-100 to-gray-200 p-6 rounded-xl shadow-2xl">
-    <h2 class="text-3xl font-bold text-gray-800 mb-4 flex items-center gap-2">🧾 Billing Page</h2>
+<div class="max-w-7xl mx-auto bg-gradient-to-br from-gray-100 to-gray-200 p-4 sm:p-6 lg:p-8 rounded-xl shadow-2xl mt-4">
+    <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center gap-2">🧾 Billing Page</h2>
 
     <form method="POST" action="{{ url_for('billing.billing_page') }}">
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">👤 Customer Name:</label>
-            <input type="text" name="customer_name" required class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-        </div>
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">📱 Mobile Number:</label>
-            <input type="text" name="mobile_number" class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-        </div>
-
-        <h2 class="text-xl font-semibold text-gray-800 mb-2">🛒 Add Products to Bill</h2>
-        <div class="overflow-x-auto">
-            <table class="w-full bg-white shadow-md rounded-lg border border-gray-300">
-                <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                    <tr>
-                        <th class="p-3">📦 Product Name</th>
-                        <th class="p-3">💲 Sale Price</th>
-                        <th class="p-3">🔢 Quantity</th>
-                        <th class="p-3">💸 Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in stock_items %}
-                    <tr class="text-center border-b hover:bg-green-100 transition duration-200">
-                        <td class="p-3">{{ item.product_name }}</td>
-                        <td class="p-3 font-semibold text-blue-700">₹{{ item.price }}</td>
-                        <td class="p-3">
-                            {% if item.quantity > 0 %}
-                            <input
-                                type="number"
-                                name="quantity_{{ item.product_name }}"
-                                min="0"
-                                value="0"
-                                class="quantity-input px-2 py-1 border rounded-md w-20 text-center bg-gray-50"
-                                data-product-name="{{ item.product_name|e }}"
-                                data-price="{{ item.price }}"
-                                data-max-stock="{{ item.quantity }}"
-                            />
-                            <small class="text-gray-500 block">Stock: {{ item.quantity }}</small>
-                            <small id="warning_{{ item.product_name|e }}" class="text-red-500 hidden">⚠️ Exceeds Stock!</small>
-                            {% else %}
-                            <input type="number" disabled value="0" class="px-2 py-1 border rounded-md w-20 text-center bg-gray-200 cursor-not-allowed" />
-                            <small class="text-red-500 font-semibold">❌ Out of Stock</small>
-                            {% endif %}
-                        </td>
-                        <td class="p-3 font-bold text-green-700">₹<span id="total_{{ item.product_name|e }}">0.00</span></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- Customer Details Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1">👤 Customer Name *</label>
+                <input type="text" name="customer_name" required placeholder="Enter customer name"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1">📱 Mobile Number</label>
+                <input type="text" name="mobile_number" placeholder="Enter mobile number"
+                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
         </div>
 
-        <div class="mt-6 text-right">
-            <h3 class="text-2xl font-bold text-gray-800">💰 Total Amount: ₹<span id="final_total" class="text-green-700">0.00</span></h3>
-        </div>
+        <!-- Products Section with Real-Time Search Bar -->
+        <div class="bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">🛒 Add Products to Bill</h2>
+                
+                <!-- Live Search Bar -->
+                <div class="relative w-full md:w-80">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">🔍</span>
+                    <input type="text" id="product_search" placeholder="Search product name..."
+                           class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none shadow-sm" />
+                </div>
+            </div>
 
-        <button type="submit" class="mt-4 px-4 py-2 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-md hover:from-green-500 hover:to-green-600 shadow-md">
-            ✅ Generate Bill
-        </button>
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="w-full bg-white text-left border-collapse">
+                    <thead class="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm">
+                        <tr>
+                            <th class="p-3">📦 Product Name</th>
+                            <th class="p-3 text-center">💲 Sale Price</th>
+                            <th class="p-3 text-center">🔢 Quantity</th>
+                            <th class="p-3 text-right">💸 Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product_tbody" class="divide-y divide-gray-200 text-sm">
+                        {% for item in stock_items %}
+                        <tr class="product-row hover:bg-green-50 transition duration-150">
+                            <td class="p-3 font-medium text-gray-800 product-name-cell">{{ item.product_name }}</td>
+                            <td class="p-3 text-center font-semibold text-blue-700">₹{{ item.price }}</td>
+                            <td class="p-3 text-center">
+                                {% if item.quantity > 0 %}
+                                <input
+                                    type="number"
+                                    name="quantity_{{ item.product_name }}"
+                                    min="0"
+                                    value="0"
+                                    class="quantity-input px-2 py-1 border border-gray-300 rounded-md w-24 text-center bg-gray-50 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                                    data-product-name="{{ item.product_name|e }}"
+                                    data-price="{{ item.price }}"
+                                    data-max-stock="{{ item.quantity }}"
+                                />
+                                <small class="text-gray-500 block mt-1">Stock: {{ item.quantity }}</small>
+                                <small id="warning_{{ item.product_name|e }}" class="text-red-500 font-medium block hidden">⚠️ Exceeds Stock!</small>
+                                {% else %}
+                                <input type="number" disabled value="0" class="px-2 py-1 border rounded-md w-24 text-center bg-gray-200 cursor-not-allowed" />
+                                <small class="text-red-500 font-semibold block mt-1">❌ Out of Stock</small>
+                                {% endif %}
+                            </td>
+                            <td class="p-3 text-right font-bold text-green-700">₹<span id="total_{{ item.product_name|e }}">0.00</span></td>
+                        </tr>
+                        {% endfor %}
+                        
+                        <!-- No Match Message -->
+                        <tr id="no_match_row" class="hidden">
+                            <td colspan="4" class="p-6 text-center text-gray-500">
+                                🔍 No matching products found.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200">
+                <button type="submit" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-green-700 shadow-md transition">
+                    ✅ Generate Bill
+                </button>
+                <h3 class="text-2xl font-bold text-gray-800">💰 Total Amount: ₹<span id="final_total" class="text-green-700">0.00</span></h3>
+            </div>
+        </div>
     </form>
 </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const quantityInputs = document.querySelectorAll('.quantity-input');
+    const searchInput = document.getElementById('product_search');
+    const productRows = document.querySelectorAll('.product-row');
+    const noMatchRow = document.getElementById('no_match_row');
 
-    // This function will calculate the grand total from all item totals
+    // 1. Live Search Logic
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        let visibleCount = 0;
+
+        productRows.forEach(row => {
+            const productName = row.querySelector('.product-name-cell').textContent.toLowerCase();
+            if (productName.includes(query)) {
+                row.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                row.classList.add('hidden');
+            }
+        });
+
+        if (visibleCount === 0) {
+            noMatchRow.classList.remove('hidden');
+        } else {
+            noMatchRow.classList.add('hidden');
+        }
+    });
+
+    // 2. Grand Total Calculation
     function updateFinalTotal() {
         let finalTotal = 0;
         document.querySelectorAll("span[id^='total_']").forEach(span => {
@@ -80,10 +129,9 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("final_total").innerText = finalTotal.toFixed(2);
     }
 
-    // Add an event listener to each quantity input field
+    // 3. Live Quantity & Item Calculation
     quantityInputs.forEach(input => {
         input.addEventListener('input', function() {
-            // Get the data stored in the element's data-* attributes
             const productName = this.dataset.productName;
             const price = parseFloat(this.dataset.price);
             const maxStock = parseInt(this.dataset.maxStock);
@@ -93,20 +141,17 @@ document.addEventListener("DOMContentLoaded", function() {
             const totalElement = document.getElementById(`total_${productName}`);
             const warningElement = document.getElementById(`warning_${productName}`);
             
-            // Check if quantity exceeds stock and show/hide warning
             if (quantity > maxStock) {
-                quantity = maxStock; // Cap the quantity at the max stock
-                this.value = maxStock; // Update the input field visually
+                quantity = maxStock;
+                this.value = maxStock;
                 warningElement.classList.remove('hidden');
             } else {
                 warningElement.classList.add('hidden');
             }
 
-            // Update the total for this specific item
             const itemTotal = quantity * price;
             totalElement.innerText = itemTotal.toFixed(2);
 
-            // After updating the item total, recalculate the grand total
             updateFinalTotal();
         });
     });
