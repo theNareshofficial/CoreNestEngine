@@ -1,75 +1,110 @@
-<nav class="bg-blue-600 text-white font-bold p-4 shadow-lg">
+<nav class="bg-blue-600 text-white font-bold p-4 shadow-lg sticky top-0 z-40">
     <div class="container mx-auto flex justify-between items-center">
-        <a href="{{ url_for('core.home') }}" class="text-2xl font-bold flex items-center space-x-2">
-            <div class="animate-spin-slow w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full"></div>
+        <!-- Logo / Brand Title -->
+        <a href="{{ url_for('core.home') }}" class="text-2xl font-bold flex items-center space-x-2 tracking-wide">
+            <span class="text-2xl">📦</span>
             <span>CoreNestEngine</span>
         </a>
 
-        <div class="hidden lg:flex items-center space-x-4 text-lg">
+        <!-- Desktop Navigation -->
+        <div class="hidden lg:flex items-center space-x-2 text-base">
             <a href="{{ url_for('core.home') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">🏠 Home</a>
             <a href="{{ url_for('inventory.dashboard') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">📊 Dashboard</a>
             <a href="{{ url_for('billing.billing_page') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">💳 Billing</a>
             <a href="{{ url_for('inventory.inward') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">📥 Inward</a>
             <a href="{{ url_for('billing.bill_detail') }}" class="px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">🔍 Search Bill</a>
 
+            <!-- Settings Dropdown -->
             <div class="relative">
-                <button id="settings-btn" class="flex items-center px-3 py-2 rounded-md hover:bg-blue-700 transition-colors">
+                <button id="settings-btn" class="flex items-center px-3 py-2 rounded-md hover:bg-blue-700 transition-colors focus:outline-none">
                     <span>⚙️ Settings</span>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 ml-1">
                         <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 011.06 0L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
                     </svg>
                 </button>
-                <div id="settings-menu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 hidden">
-                    <a href="{{ url_for('core.user_accounts') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">User Accounts</a>
-                    <a href="{{ url_for('core.activity_log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">Activity Log</a>
-                    <a href="{{ url_for('core.daily_sales') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">Daily Sales</a>
-                    <a href="{{ url_for('core.deleted_log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">Deleted Items Log</a>
-                    <hr>
+
+                <div id="settings-menu" class="absolute right-0 mt-2 w-52 bg-white rounded-md shadow-xl py-2 z-50 hidden border border-gray-100 font-normal">
+                    <a href="{{ url_for('core.user_accounts') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">👤 User Accounts</a>
+                    <a href="{{ url_for('core.activity_log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">🕒 Activity Log</a>
+                    <a href="{{ url_for('core.daily_sales') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">💰 Daily Sales</a>
+                    <a href="{{ url_for('core.deleted_log') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">🗑️ Deleted Items Log</a>
+                    <hr class="my-1 border-gray-200">
                     <form action="{{ url_for('core.update_app') }}" method="POST" class="block">
-                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-100">
-                            Update
+                        <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">
+                            🔄 Pull Latest Updates
                         </button>
                     </form>
                 </div>
             </div>
 
-            <a href="{{ url_for('auth.logout') }}" class="flex items-center space-x-2 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-700 transition-all">
+            <!-- Logout Button -->
+            <a href="{{ url_for('auth.logout') }}" title="Logout"
+               class="flex items-center space-x-1 px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors ml-2 shadow">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                     <path fill-rule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clip-rule="evenodd" />
                 </svg>
-                <!-- <span>Logout</span> -->
+                <span>Logout</span>
             </a>
         </div>
 
-        <button id="menu-btn" class="lg:hidden focus:outline-none">
-            <span class="text-2xl">&#9776;</span>
+        <!-- Mobile Menu Toggle Button -->
+        <button id="menu-btn" class="lg:hidden p-2 rounded-md hover:bg-blue-700 focus:outline-none" aria-label="Toggle menu">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
         </button>
     </div>
 
-    <div id="mobile-menu" class="hidden lg:hidden">
+    <!-- Mobile Menu Content -->
+    <div id="mobile-menu" class="hidden lg:hidden mt-3 pt-3 border-t border-blue-500 space-y-1">
+        <a href="{{ url_for('core.home') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700">🏠 Home</a>
+        <a href="{{ url_for('inventory.dashboard') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700">📊 Dashboard</a>
+        <a href="{{ url_for('billing.billing_page') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700">💳 Billing</a>
+        <a href="{{ url_for('inventory.inward') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700">📥 Inward</a>
+        <a href="{{ url_for('billing.bill_detail') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700">🔍 Search Bill</a>
+
+        <div class="border-t border-blue-500 pt-2 mt-2">
+            <div class="px-3 py-1 text-xs uppercase tracking-wider text-blue-200">Management & Reports</div>
+            <a href="{{ url_for('core.user_accounts') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700 text-sm">👤 User Accounts</a>
+            <a href="{{ url_for('core.activity_log') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700 text-sm">🕒 Activity Log</a>
+            <a href="{{ url_for('core.daily_sales') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700 text-sm">💰 Daily Sales</a>
+            <a href="{{ url_for('core.deleted_log') }}" class="block px-3 py-2 rounded-md hover:bg-blue-700 text-sm">🗑️ Deleted Items Log</a>
         </div>
+
+        <div class="border-t border-blue-500 pt-2 mt-2">
+            <a href="{{ url_for('auth.logout') }}" class="block px-3 py-2 rounded-md bg-red-500 text-center hover:bg-red-600">Logout</a>
+        </div>
+    </div>
 </nav>
 
 <script>
-    // --- Mobile Menu Toggle ---
-    const menuBtn = document.getElementById("menu-btn");
-    const mobileMenu = document.getElementById("mobile-menu");
-    menuBtn.addEventListener("click", () => {
-        mobileMenu.classList.toggle("hidden");
-    });
+    document.addEventListener("DOMContentLoaded", function() {
+        // --- Mobile Menu Toggle ---
+        const menuBtn = document.getElementById("menu-btn");
+        const mobileMenu = document.getElementById("mobile-menu");
+        
+        if (menuBtn && mobileMenu) {
+            menuBtn.addEventListener("click", () => {
+                mobileMenu.classList.toggle("hidden");
+            });
+        }
 
-    // --- Settings Dropdown Toggle (Desktop) ---
-    const settingsBtn = document.getElementById("settings-btn");
-    const settingsMenu = document.getElementById("settings-menu");
+        // --- Settings Dropdown Toggle (Desktop) ---
+        const settingsBtn = document.getElementById("settings-btn");
+        const settingsMenu = document.getElementById("settings-menu");
 
-    settingsBtn.addEventListener("click", () => {
-        settingsMenu.classList.toggle("hidden");
-    });
+        if (settingsBtn && settingsMenu) {
+            settingsBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                settingsMenu.classList.toggle("hidden");
+            });
 
-    // Close dropdown if user clicks outside of it
-    window.addEventListener("click", function(event) {
-        if (!settingsBtn.contains(event.target)) {
-            settingsMenu.classList.add("hidden");
+            // Close dropdown when clicking outside
+            window.addEventListener("click", (event) => {
+                if (!settingsBtn.contains(event.target) && !settingsMenu.contains(event.target)) {
+                    settingsMenu.classList.add("hidden");
+                }
+            });
         }
     });
 </script>
