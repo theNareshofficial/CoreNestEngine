@@ -4,71 +4,99 @@
 
 {% include 'navbar.html' %}
 
-<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-lg">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Inward Stock Entry</h2>
+<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 mt-4">
+    <!-- Inward Stock Form -->
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <span>📥</span> Add Inward Stock
+        </h2>
 
-    <form method="POST" action="{{ url_for('inventory.inward') }}">
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">Product Name:</label>
-            <input type="text" name="product_name" required
-                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        <form method="POST" action="{{ url_for('inventory.inward') }}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1 text-sm">Product Name *</label>
+                <input type="text" name="product_name" placeholder="e.g. Wireless Mouse" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1 text-sm">Dealer / Supplier *</label>
+                <input type="text" name="dealer" placeholder="e.g. Acme Tech Ltd" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1 text-sm">Quantity *</label>
+                <input type="number" name="quantity" min="1" placeholder="e.g. 50" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1 text-sm">Purchase Rate (₹) *</label>
+                <input type="number" name="rate" step="0.01" min="0" placeholder="e.g. 450.00" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-1 text-sm">Sale Price (₹) *</label>
+                <input type="number" name="price" step="0.01" min="0" placeholder="e.g. 699.00" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            </div>
+
+            <div class="flex items-end">
+                <button type="submit" class="w-full px-6 py-2.5 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
+                    <span>➕</span> Add Stock to Inventory
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Current Inward Stock Table -->
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <span>📦</span> Current Inward Stock
+            </h2>
+            <a href="{{ url_for('inventory.dashboard') }}" class="text-sm font-semibold text-blue-600 hover:underline">
+                View Full Dashboard &rarr;
+            </a>
         </div>
 
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">Quantity:</label>
-            <input type="number" name="quantity" min="1" required
-                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
+        <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+            <table class="w-full border-collapse bg-white">
+                <thead class="bg-blue-600 text-white text-sm">
+                    <tr>
+                        <th class="p-3 text-left">Product Name</th>
+                        <th class="p-3 text-center">Quantity</th>
+                        <th class="p-3 text-right">Purchase Rate</th>
+                        <th class="p-3 text-right">Sale Price</th>
+                        <th class="p-3 text-left">Dealer</th>
+                        <th class="p-3 text-left">Added At</th>
+                        <th class="p-3 text-left">User</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 text-sm">
+                    {% for item in inward_stock %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="p-3 font-medium text-gray-800">{{ item.product_name }}</td>
+                        <td class="p-3 text-center font-bold {% if item.quantity == 0 %}text-red-500{% else %}text-gray-700{% endif %}">
+                            {{ item.quantity }}
+                        </td>
+                        <td class="p-3 text-right text-gray-600">₹{{ "%.2f"|format(item.rate) }}</td>
+                        <td class="p-3 text-right font-semibold text-green-700">₹{{ "%.2f"|format(item.price) }}</td>
+                        <td class="p-3 text-gray-600">{{ item.dealer or 'N/A' }}</td>
+                        <td class="p-3 text-gray-500 text-xs">{{ item.added_at }}</td>
+                        <td class="p-3 text-gray-600">{{ item.user }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="p-6 text-center text-gray-500">
+                            No inward stock items recorded yet. Use the form above to add items!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">Rate:</label>
-            <input type="number" name="rate" step="0.01" required
-                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">Price:</label>
-            <input type="number" name="price" step="0.01" required
-                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-        </div>
-
-        <div class="mb-4">
-            <label class="block text-gray-600 font-semibold">Dealer</label>
-            <input type="text" name="dealer" required
-                class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-400" />
-        </div>
-
-        <button type="submit" class="mt-4 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">Add
-            Stock</button>
-    </form>
-
-    <h2 class="text-2xl font-semibold text-gray-800 mt-6">Current Inward Stock</h2>
-    <div class="overflow-x-auto mt-4">
-        <table class="w-full bg-white shadow-md rounded-lg">
-            <thead class="bg-blue-500 text-white">
-                <tr>
-                    <th class="p-3">Product Name</th>
-                    <th class="p-3">Quantity</th>
-                    <th class="p-3">Rate</th>
-                    <th class="p-3">Price</th>
-                    <th class="p-3">Added At</th>
-                    <th class="p-3">User</th>
-                    <th class="p-3">Dealer</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in inward_stock %}
-                <tr class="text-center border-b hover:bg-gray-100">
-                    <td class="p-6">{{ item.product_name }}</td>
-                    <td class="p-6">{{ item.quantity }}</td>
-                    <td class="p-6">₹{{ item.rate }}</td>
-                    <td class="p-6">₹{{ item.price }}</td>
-                    <td class="p-6">{{ item.added_at }}</td>
-                    <td class="p-6">{{ item.user }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
 </div>
 
