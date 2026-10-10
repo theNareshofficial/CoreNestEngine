@@ -28,7 +28,10 @@ from db.database import (
     get_sales_stats,
     get_sales_by_product,
     get_daily_sales_history,
-    seed_sample_data
+    seed_sample_data,
+    get_inward_history,
+    get_inward_suggestions,
+    get_billing_history
 )
 
 __all__ = [
@@ -46,6 +49,8 @@ __all__ = [
     "get_inventory_item",
     "get_inventory_item_by_name",
     "add_inward_stock",
+    "get_inward_history",
+    "get_inward_suggestions",
     "update_inventory_stock",
     "get_available_stock",
     "create_bill",
@@ -55,5 +60,6 @@ __all__ = [
     "get_sales_stats",
     "get_sales_by_product",
     "get_daily_sales_history",
-    "seed_sample_data"
+    "seed_sample_data",
+    "get_billing_history"
 ]

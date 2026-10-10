@@ -1,95 +1,691 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block title %}Inward Stock Entry - CoreNestEngine{% endblock %}
 
+{% block content %}
 {% include 'navbar.html' %}
 
-<div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 mt-4">
-    <!-- Inward Stock Form -->
-    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <span>📥</span> Add Inward Stock
-        </h2>
+<!-- Embedded Styles for Micro-Animations -->
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.92); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes modalPop {
+        from { opacity: 0; transform: scale(0.95) translateY(-12px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-fade-in { animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-scale-in { animation: scaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-modal-pop { animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+</style>
 
-        <form method="POST" action="{{ url_for('inventory.inward') }}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-                <label class="block text-gray-700 font-semibold mb-1 text-sm">Product Name *</label>
-                <input type="text" name="product_name" placeholder="e.g. Wireless Mouse" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+<div class="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8 mt-2">
+
+    <!-- SINGLE CONSOLIDATED BOX: Inward Stock Entry Form -->
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100 transition-all duration-300">
+        <!-- Form Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-gray-200 gap-2">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <span class="inline-block hover:rotate-12 transition-transform duration-200">📥</span> Inward Stock Entry
+            </h2>
+            <span class="text-xs text-gray-500 font-medium">
+                Fields marked with <span class="text-red-500 font-bold">*</span> are required
+            </span>
+        </div>
+
+        <form id="inwardForm" method="POST" action="{{ url_for('inventory.inward') }}" class="space-y-6">
+            <!-- Hidden Fields for Dynamic Models, Category & Timestamp -->
+            <input type="hidden" name="models" id="modelsJsonInput" value="[]" />
+            <input type="hidden" name="category" id="categoryCombinedInput" value="" />
+            <input type="hidden" name="timestamp" id="injectedTimestampInput" value="" />
+
+            <!-- SECTION 1: Product & Classification -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                    <span>📦</span> Product & Classification
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                    <!-- Product Name with Typeahead -->
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="product_name" class="block text-gray-700 font-semibold text-sm">
+                                Product Name <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <input type="text" id="product_name" name="product_name" autocomplete="off"
+                            placeholder="e.g. Wireless Mouse, MacBook Pro" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                        <!-- Typeahead Dropdown -->
+                        <div id="productSuggestions" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-30 max-h-52 overflow-y-auto hidden divide-y divide-gray-100 text-sm animate-fade-in"></div>
+                    </div>
+
+                    <!-- Category Cascading Select -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="primaryCategory" class="block text-gray-700 font-semibold text-sm">
+                                Category <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <select id="primaryCategory" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm bg-white transition-all duration-150">
+                            <option value="">Select Category...</option>
+                            <option value="Toys">Toys</option>
+                            <option value="Cycles">Cycles</option>
+                            <option value="Custom">Other / Custom</option>
+                        </select>
+                    </div>
+
+                    <!-- Sub-Category Cascading Select -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="subCategory" class="block text-gray-700 font-semibold text-sm">
+                                Sub-Category <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <select id="subCategory" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm bg-white transition-all duration-150">
+                            <option value="">Select Sub-Category...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Classification Input (Shown only when 'Custom' is selected) -->
+                <div id="customCategoryWrapper" class="mt-3 hidden animate-fade-in">
+                    <label for="customCategoryInput" class="block text-gray-700 font-semibold mb-1.5 text-sm">
+                        Custom Classification <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" id="customCategoryInput" placeholder="e.g. Industrial Equipment > Tooling"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                </div>
+
+                <!-- Product Models / Variants (Dynamic Tags Engine) -->
+                <div class="mt-4">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-gray-700 font-semibold text-sm">
+                            Product Models / Variants <span class="text-red-500">*</span>
+                        </label>
+                        <span class="text-xs text-gray-400">Press Enter or comma to add each model</span>
+                    </div>
+
+                    <div class="p-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-400 focus-within:border-blue-400 bg-gray-50 focus-within:bg-white transition-all duration-200">
+                        <!-- Model Tags Chip Container -->
+                        <div id="modelsChipContainer" class="flex flex-wrap gap-1.5 mb-2 empty:mb-0"></div>
+
+                        <!-- Tag Input Row -->
+                        <div class="relative flex items-center gap-2">
+                            <input type="text" id="modelTagInput" autocomplete="off"
+                                placeholder="Type model (e.g. M3 Pro, A2485, 128GB Black) and press Enter"
+                                class="flex-1 bg-transparent border-0 px-2 py-1 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-0" />
+                            <button type="button" id="addModelBtn"
+                                class="px-3 py-1 text-xs font-semibold bg-blue-100 text-blue-700 hover:bg-blue-200 hover:scale-105 active:scale-95 rounded transition-all duration-150 shrink-0">
+                                + Add Model
+                            </button>
+                            <!-- Model Typeahead Suggestions -->
+                            <div id="modelSuggestions" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-30 max-h-48 overflow-y-auto hidden divide-y divide-gray-100 text-sm animate-fade-in"></div>
+                        </div>
+                    </div>
+                    <p id="modelErrorText" class="text-xs text-red-500 mt-1 hidden font-semibold animate-fade-in">⚠️ At least one model tag is required.</p>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-gray-700 font-semibold mb-1 text-sm">Dealer / Supplier *</label>
-                <input type="text" name="dealer" placeholder="e.g. Acme Tech Ltd" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            <!-- <hr class="border-gray-200" /> -->
+
+            <!-- SECTION 2: Vendor & Invoice -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                    <span>🏢</span> Vendor & Invoice
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <!-- Dealer / Supplier with Typeahead -->
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="dealer" class="block text-gray-700 font-semibold text-sm">
+                                Dealer / Supplier <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <input type="text" id="dealer" name="dealer" autocomplete="off"
+                            placeholder="e.g. Acme Tech Ltd, Apple India Corp" required
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                        <!-- Dealer Typeahead Dropdown -->
+                        <div id="dealerSuggestions" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-30 max-h-52 overflow-y-auto hidden divide-y divide-gray-100 text-sm animate-fade-in"></div>
+                    </div>
+
+                    <!-- Invoice Number -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="invoice_no" class="block text-gray-700 font-semibold text-sm">
+                                Invoice Number
+                            </label>
+                            <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                Defaults to NA if empty
+                            </span>
+                        </div>
+                        <input type="text" id="invoice_no" name="invoice_no" autocomplete="off"
+                            placeholder="e.g. INV-2026-9081 (Optional)"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                    </div>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-gray-700 font-semibold mb-1 text-sm">Quantity *</label>
-                <input type="number" name="quantity" min="1" placeholder="e.g. 50" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            <hr class="border-gray-200" />
+
+            <!-- SECTION 3: Stock & Pricing Engine -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                    <span>💰</span> Stock & Pricing
+                </h3>
+
+                <!-- Hidden fields for server-side submission -->
+                <input type="hidden" name="landed_cost" id="landedCostHidden" value="0" />
+                <input type="hidden" name="calc_mode" id="calcModeHidden" value="auto" />
+
+                <!-- Row 1: Quantity / Pack Size / Bonus Qty -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <!-- Quantity -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="quantity" class="block text-gray-700 font-semibold text-sm">
+                                Quantity <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <input type="number" id="quantity" name="quantity" min="1" step="1" required
+                            placeholder="e.g. 50"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm font-semibold transition-all duration-150" />
+                    </div>
+
+                    <!-- Pack Size (pieces per pack) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="pack_size" class="block text-gray-700 font-semibold text-sm">
+                                Pack Size <span class="text-xs text-gray-400 font-normal">(pcs/pack)</span>
+                            </label>
+                            <span class="text-[10px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                Defaults to NA
+                            </span>
+                        </div>
+                        <input type="number" id="pack_size" name="pack_size" min="1" step="1"
+                            placeholder="e.g. 5 pieces per pack"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                    </div>
+
+                    <!-- Free Quantity (Bonus Qty) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="free_quantity" class="block text-gray-700 font-semibold text-sm">
+                                Bonus Qty
+                            </label>
+                            <span class="text-[10px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                Defaults to NA
+                            </span>
+                        </div>
+                        <input type="number" id="free_quantity" name="free_quantity" min="0" step="1"
+                            placeholder="e.g. 5 (Optional)"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                    </div>
+                </div>
+
+                <!-- Row 2: Purchase Rate / GST / Margin Rate -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <!-- Purchase Rate (Base Cost) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="rate" class="block text-gray-700 font-semibold text-sm">
+                                Purchase Rate (₹) <span class="text-red-500">*</span>
+                            </label>
+                        </div>
+                        <input type="number" id="rate" name="rate" min="0" step="0.01" required
+                            placeholder="e.g. 450.00"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm font-medium transition-all duration-150" />
+                    </div>
+
+                    <!-- GST / Tax Rate (%) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="tax_rate" class="block text-gray-700 font-semibold text-sm">
+                                GST Rate (%)
+                            </label>
+                            <span class="text-[10px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                Defaults to NA
+                            </span>
+                        </div>
+                        <select id="tax_rate" name="tax_rate"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm bg-white transition-all duration-150">
+                            <option value="">NA (None / Exempt)</option>
+                            <option value="0%">0% (Exempt)</option>
+                            <option value="5%">5%</option>
+                            <option value="12%">12%</option>
+                            <option value="18%">18%</option>
+                            <option value="28%">28%</option>
+                        </select>
+                    </div>
+
+                    <!-- Margin Rate (%) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="margin_rate" class="block text-gray-700 font-semibold text-sm">
+                                Margin Rate (%)
+                            </label>
+                            <span class="text-[10px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                Profit %
+                            </span>
+                        </div>
+                        <input type="number" id="margin_rate" name="margin_rate" min="0" max="99.99" step="0.01"
+                            placeholder="e.g. 20"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm font-medium transition-all duration-150" />
+                    </div>
+                </div>
+
+                <!-- Row 3: Calculation Mode Toggle + Landed Cost + Final Sale Price -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <!-- Calculation Mode Toggle -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label class="block text-gray-700 font-semibold text-sm">
+                                Pricing Mode
+                            </label>
+                        </div>
+                        <div class="flex items-center gap-3 px-3 py-2 border border-gray-200 bg-gray-50 rounded-md h-[38px]">
+                            <label for="autoCalcToggle" class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="autoCalcToggle" checked class="sr-only peer" />
+                                <div class="w-9 h-5 bg-gray-300 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:bg-blue-600 transition-colors duration-200
+                                    after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+                            </label>
+                            <span id="calcModeLabel" class="text-xs font-semibold text-blue-700">
+                                Auto-Calculate
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Landed Cost (Read-only computed display) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label class="block text-gray-700 font-semibold text-sm">
+                                Landed Cost (₹)
+                            </label>
+                            <span class="text-[10px] text-gray-400 bg-blue-50 text-blue-600 px-1 py-0.5 rounded border border-blue-200 font-bold">
+                                Auto
+                            </span>
+                        </div>
+                        <div id="landedCostDisplay"
+                            class="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-md text-sm font-mono font-bold text-gray-700 h-[38px] flex items-center">
+                            ₹0.00
+                        </div>
+                    </div>
+
+                    <!-- Final Sale Price -->
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="price" class="block text-gray-700 font-semibold text-sm">
+                                Final Sale Price (₹) <span class="text-red-500">*</span>
+                            </label>
+                            <span id="salePriceModeTag" class="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                                🔒 Locked
+                            </span>
+                        </div>
+                        <input type="number" id="price" name="price" min="0" step="0.01" required
+                            placeholder="Auto-calculated"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm font-bold text-green-700 transition-all duration-150" readonly />
+                    </div>
+                </div>
+
+                <!-- Pricing Breakdown Card (live-updates) -->
+                <div id="pricingBreakdownCard" class="bg-gradient-to-r from-gray-50 to-blue-50/30 border border-gray-200 rounded-lg p-3 hidden">
+                    <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500">Base Cost:</span>
+                            <span id="breakdownBase" class="font-mono font-bold text-gray-800">₹0.00</span>
+                        </div>
+                        <span class="text-gray-300 hidden sm:inline">→</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500">+ GST:</span>
+                            <span id="breakdownGST" class="font-mono font-bold text-orange-600">₹0.00</span>
+                            <span id="breakdownGSTPercent" class="text-[10px] text-gray-400">(0%)</span>
+                        </div>
+                        <span class="text-gray-300 hidden sm:inline">→</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500">Landed:</span>
+                            <span id="breakdownLanded" class="font-mono font-bold text-blue-700">₹0.00</span>
+                        </div>
+                        <span class="text-gray-300 hidden sm:inline">→</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500">+ Margin:</span>
+                            <span id="breakdownMargin" class="font-mono font-bold text-emerald-600">₹0.00</span>
+                            <span id="breakdownMarginPercent" class="text-[10px] text-gray-400">(0%)</span>
+                        </div>
+                        <span class="text-gray-300 hidden sm:inline">=</span>
+                        <div class="flex items-center gap-1.5 ml-auto">
+                            <span class="text-gray-700 font-bold">Sale:</span>
+                            <span id="breakdownSale" class="font-mono font-black text-green-700 text-sm">₹0.00</span>
+                        </div>
+                    </div>
+                    <!-- Per-piece price when pack_size is set -->
+                    <div id="perPieceRow" class="mt-2 pt-2 border-t border-gray-200 text-xs hidden">
+                        <div class="flex items-center gap-4">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-gray-500">📦 Pack of</span>
+                                <span id="breakdownPackSize" class="font-bold text-gray-800">-</span>
+                                <span class="text-gray-500">pcs</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-gray-500">Cost/pc:</span>
+                                <span id="breakdownCostPerPiece" class="font-mono font-bold text-blue-700">₹0.00</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-gray-500">Sale/pc:</span>
+                                <span id="breakdownSalePerPiece" class="font-mono font-bold text-green-700">₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Manual mode: show effective margin -->
+                    <div id="manualMarginRow" class="mt-2 pt-2 border-t border-gray-200 text-xs hidden">
+                        <div class="flex items-center gap-2">
+                            <span class="text-gray-500">📊 Effective Margin:</span>
+                            <span id="effectiveMarginDisplay" class="font-bold text-emerald-700">0.00%</span>
+                            <span class="text-gray-400">|</span>
+                            <span class="text-gray-500">Profit/unit:</span>
+                            <span id="profitPerUnitDisplay" class="font-mono font-bold text-emerald-700">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-gray-700 font-semibold mb-1 text-sm">Purchase Rate (₹) *</label>
-                <input type="number" name="rate" step="0.01" min="0" placeholder="e.g. 450.00" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+            <hr class="border-gray-200" />
+
+            <!-- SECTION 4: Storage Location -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                    <span>📍</span> Storage Location
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <!-- Rack / Shelf Number with Typeahead -->
+                    <div class="relative">
+                        <div class="flex items-center justify-between mb-1.5 h-5">
+                            <label for="rack_number" class="block text-gray-700 font-semibold text-sm">
+                                Rack / Shelf Number
+                            </label>
+                            <span class="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                                Defaults to NA if empty
+                            </span>
+                        </div>
+                        <input type="text" id="rack_number" name="rack_number" autocomplete="off"
+                            placeholder="e.g. Rack A-04, Shelf 2 (Optional)"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none text-sm transition-all duration-150" />
+                        <!-- Rack Typeahead Dropdown -->
+                        <div id="rackSuggestions" class="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-30 max-h-48 overflow-y-auto hidden divide-y divide-gray-100 text-sm animate-fade-in"></div>
+                    </div>
+
+                    <div class="flex items-center text-xs text-gray-500 bg-gray-50 p-3 rounded-md border border-gray-200 self-end h-[38px]">
+                        <span>💡 Leaving optional fields blank automatically stores their value as <strong class="text-gray-700 bg-white px-1.5 py-0.5 rounded border border-gray-300">NA</strong>.</span>
+                    </div>
+                </div>
             </div>
 
-            <div>
-                <label class="block text-gray-700 font-semibold mb-1 text-sm">Sale Price (₹) *</label>
-                <input type="number" name="price" step="0.01" min="0" placeholder="e.g. 699.00" required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-            </div>
-
-            <div class="flex items-end">
-                <button type="submit" class="w-full px-6 py-2.5 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2">
-                    <span>➕</span> Add Stock to Inventory
+            <!-- Form Action Footer -->
+            <div class="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <button type="button" id="resetFormBtn"
+                    class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 active:scale-95 rounded-md transition-all duration-150">
+                    Clear Form
+                </button>
+                <button type="button" id="reviewInwardBtn"
+                    class="w-full sm:w-auto px-6 py-2.5 bg-green-600 hover:bg-green-700 hover:shadow-md active:scale-95 text-white font-semibold rounded-md shadow transition-all duration-150 flex items-center justify-center gap-2">
+                    <span>➕ Save Inward Record</span>
                 </button>
             </div>
         </form>
     </div>
 
-    <!-- Current Inward Stock Table -->
-    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100">
-        <div class="flex justify-between items-center mb-6">
+    <!-- SUBMISSION PREVIEW CONFIRMATION MODAL -->
+    <div id="previewModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden transition-opacity duration-200">
+        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl border border-gray-200 overflow-hidden animate-modal-pop">
+            <!-- Modal Header -->
+            <div class="bg-blue-600 text-white p-4 sm:p-5 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-xl">📋</span>
+                    <div>
+                        <h3 class="text-lg font-bold text-white">Inward Record Summary</h3>
+                        <p class="text-xs text-blue-100">Review all details before committing to stock</p>
+                    </div>
+                </div>
+                <button type="button" id="closeModalCrossBtn" class="text-white hover:text-gray-200 hover:scale-110 active:scale-90 text-2xl font-bold p-1 leading-none transition-transform">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Modal System Metadata Bar -->
+            <div class="bg-gray-50 border-b border-gray-200 px-5 py-2.5 flex flex-wrap items-center justify-between text-xs text-gray-600">
+                <div>
+                    <span class="font-semibold text-gray-500">Auto Timestamp:</span>
+                    <span id="modalTimestamp" class="font-mono font-bold text-gray-800 ml-1">--</span>
+                </div>
+                <div>
+                    <span class="font-semibold text-gray-500">Session User:</span>
+                    <span class="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 ml-1">@{{ current_user }}</span>
+                </div>
+            </div>
+
+            <!-- Modal Summary Content -->
+            <div class="p-5 sm:p-6 space-y-4 max-h-[60vh] overflow-y-auto text-sm text-gray-800">
+                <!-- Section 1 Summary -->
+                <div class="border border-gray-200 rounded-lg p-3.5 bg-gray-50 space-y-2">
+                    <div class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                        📦 Product & Classification
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+                        <div>
+                            <span class="text-gray-500 text-xs block">Product Name:</span>
+                            <span id="modalProductName" class="font-bold text-gray-900">--</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-xs block">Category:</span>
+                            <span id="modalCategory" class="font-semibold text-gray-900">--</span>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <span class="text-gray-500 text-xs block mb-1">Models / Variants:</span>
+                            <div id="modalModelsContainer" class="flex flex-wrap gap-1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2 Summary -->
+                <div class="border border-gray-200 rounded-lg p-3.5 bg-gray-50 space-y-2">
+                    <div class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                        🏢 Vendor & Invoice
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+                        <div>
+                            <span class="text-gray-500 text-xs block">Dealer / Supplier:</span>
+                            <span id="modalDealer" class="font-bold text-gray-900">--</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-xs block">Invoice Number:</span>
+                            <span id="modalInvoiceNo">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3 Summary -->
+                <div class="border border-gray-200 rounded-lg p-3.5 bg-gray-50 space-y-2">
+                    <div class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                        💰 Stock & Pricing
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs sm:text-sm">
+                        <div>
+                            <span class="text-gray-500 text-xs block">Quantity:</span>
+                            <span id="modalQuantity" class="font-bold text-gray-900">--</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-xs block">Bonus Qty:</span>
+                            <span id="modalFreeQuantity">--</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-xs block">Purchase Rate:</span>
+                            <span id="modalRate" class="font-semibold text-gray-900">--</span>
+                        </div>
+                        <div>
+                            <span class="text-gray-500 text-xs block">Sale Price:</span>
+                            <span id="modalPrice" class="font-bold text-green-700">--</span>
+                        </div>
+                        <div class="col-span-2 sm:col-span-4">
+                            <span class="text-gray-500 text-xs block">GST / Tax Rate:</span>
+                            <span id="modalTaxRate">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4 Summary -->
+                <div class="border border-gray-200 rounded-lg p-3.5 bg-gray-50 space-y-2">
+                    <div class="text-xs font-bold uppercase tracking-wider text-blue-700">
+                        📍 Storage Location
+                    </div>
+                    <div>
+                        <span class="text-gray-500 text-xs block">Rack / Shelf Number:</span>
+                        <span id="modalRackNumber">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Action Buttons -->
+            <div class="bg-gray-100 border-t border-gray-200 p-4 flex items-center justify-end gap-3">
+                <button type="button" id="closeModalBtn"
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 active:scale-95 border border-gray-300 rounded-md transition-all duration-150">
+                    ✏️ Edit Details
+                </button>
+                <button type="button" id="confirmSubmitBtn"
+                    class="px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 hover:shadow-md active:scale-95 rounded-md shadow transition-all duration-150 flex items-center gap-2">
+                    <span>✅ Confirm & Save Inward Record</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT INWARD STOCK TABLE -->
+    <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-gray-100 transition-all duration-300">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
             <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                <span>📦</span> Current Inward Stock
+                <span class="inline-block hover:scale-110 transition-transform duration-200">📦</span> Current Inward Stock
             </h2>
-            <a href="{{ url_for('inventory.dashboard') }}" class="text-sm font-semibold text-blue-600 hover:underline">
-                View Full Dashboard &rarr;
-            </a>
+
+            <div class="flex items-center gap-3">
+                <input type="text" id="tableSearchInput" placeholder="🔍 Quick filter entries..."
+                    class="px-3 py-1.5 text-xs border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:outline-none w-48 sm:w-60 transition-all duration-150" />
+                <a href="{{ url_for('inventory.dashboard') }}" class="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline shrink-0 transition-colors">
+                    View Full Dashboard &rarr;
+                </a>
+            </div>
         </div>
 
         <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-            <table class="w-full border-collapse bg-white">
-                <thead class="bg-blue-600 text-white text-sm">
+            <table class="w-full border-collapse bg-white text-sm">
+                <thead class="bg-blue-600 text-white font-semibold">
                     <tr>
-                        <th class="p-3 text-left">Product Name</th>
-                        <th class="p-3 text-center">Quantity</th>
-                        <th class="p-3 text-right">Purchase Rate</th>
-                        <th class="p-3 text-right">Sale Price</th>
-                        <th class="p-3 text-left">Dealer</th>
-                        <th class="p-3 text-left">Added At</th>
-                        <th class="p-3 text-left">User</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Product Name</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Models</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Category</th>
+                        <th class="p-3.5 text-center whitespace-nowrap">Quantity</th>
+                        <th class="p-3.5 text-right whitespace-nowrap">Purchase Rate</th>
+                        <th class="p-3.5 text-right whitespace-nowrap">Sale Price</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Dealer</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Invoice #</th>
+                        <th class="p-3.5 text-left whitespace-nowrap">Rack #</th>
+                        <th class="p-3.5 text-center whitespace-nowrap">Added At</th>
+                        <th class="p-3.5 text-center whitespace-nowrap">User</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 text-sm">
+                <tbody id="inwardTableBody" class="divide-y divide-gray-200">
                     {% for item in inward_stock %}
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="p-3 font-medium text-gray-800">{{ item.product_name }}</td>
-                        <td class="p-3 text-center font-bold {% if item.quantity == 0 %}text-red-500{% else %}text-gray-700{% endif %}">
-                            {{ item.quantity }}
+                    <tr class="hover:bg-blue-50/50 transition-colors duration-150 align-middle">
+                        <!-- Product Name -->
+                        <td class="p-3.5 font-semibold text-gray-800 whitespace-nowrap">
+                            {{ item.product_name }}
                         </td>
-                        <td class="p-3 text-right text-gray-600">₹{{ "%.2f"|format(item.rate) }}</td>
-                        <td class="p-3 text-right font-semibold text-green-700">₹{{ "%.2f"|format(item.price) }}</td>
-                        <td class="p-3 text-gray-600">{{ item.dealer or 'N/A' }}</td>
-                        <td class="p-3 text-gray-500 text-xs">{{ item.added_at }}</td>
-                        <td class="p-3 text-gray-600">{{ item.user }}</td>
+
+                        <!-- Models -->
+                        <td class="p-3.5 whitespace-nowrap">
+                            {% if item.models_list and item.models_list|length > 0 %}
+                                <div class="flex flex-wrap gap-1 max-w-xs">
+                                    {% for m in item.models_list %}
+                                        <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                            {{ m }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200">NA</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Category -->
+                        <td class="p-3.5 text-gray-600 whitespace-nowrap">
+                            {% if item.category and item.category != 'NA' %}
+                                {{ item.category }}
+                            {% else %}
+                                <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200">NA</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Quantity (+ Bonus) -->
+                        <td class="p-3.5 text-center whitespace-nowrap font-bold text-gray-800">
+                            {{ item.quantity }}
+                            {% if item.free_quantity and item.free_quantity != 'NA' and item.free_quantity != '0' %}
+                                <span class="ml-1 px-1.5 py-0.5 text-xs font-semibold bg-green-100 text-green-800 rounded-full border border-green-200">
+                                    +{{ item.free_quantity }} Free
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Purchase Rate -->
+                        <td class="p-3.5 text-right text-gray-600 font-mono whitespace-nowrap">
+                            ₹{{ "%.2f"|format(item.rate) }}
+                        </td>
+
+                        <!-- Sale Price -->
+                        <td class="p-3.5 text-right font-semibold font-mono text-green-700 whitespace-nowrap">
+                            ₹{{ "%.2f"|format(item.price) }}
+                        </td>
+
+                        <!-- Dealer -->
+                        <td class="p-3.5 text-gray-600 whitespace-nowrap">
+                            {{ item.dealer or 'NA' }}
+                        </td>
+
+                        <!-- Invoice Number -->
+                        <td class="p-3.5 text-gray-600 whitespace-nowrap">
+                            {% if item.invoice_no and item.invoice_no != 'NA' %}
+                                {{ item.invoice_no }}
+                            {% else %}
+                                <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200">NA</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Rack Number -->
+                        <td class="p-3.5 text-gray-600 whitespace-nowrap">
+                            {% if item.rack_number and item.rack_number != 'NA' %}
+                                {{ item.rack_number }}
+                            {% else %}
+                                <span class="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-400 border border-gray-200">NA</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Timestamp -->
+                        <td class="p-3.5 text-center text-gray-500 text-xs whitespace-nowrap">
+                            {{ item.timestamp_str or item.added_at }}
+                        </td>
+
+                        <!-- User -->
+                        <td class="p-3.5 text-center text-gray-600 whitespace-nowrap">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                {{ item.user or 'admin' }}
+                            </span>
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="p-6 text-center text-gray-500">
+                        <td colspan="11" class="p-8 text-center text-gray-500">
                             No inward stock items recorded yet. Use the form above to add items!
                         </td>
                     </tr>
@@ -98,6 +694,349 @@
             </table>
         </div>
     </div>
+
 </div>
 
+<!-- CLIENT JAVASCRIPT LOGIC -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // -------------------------------------------------------------
+    // 1. Timestamp Formatter (DD-MM-YYYY hh:mm:ss AM/PM)
+    // -------------------------------------------------------------
+    function formatDateTime(d) {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const strHours = String(hours).padStart(2, '0');
+        return `${day}-${month}-${year} ${strHours}:${minutes}:${seconds} ${ampm}`;
+    }
+
+    // -------------------------------------------------------------
+    // 2. Historical Suggestions Data
+    // -------------------------------------------------------------
+    const historicalData = {{ suggestions | tojson }};
+
+    function setupTypeahead(inputId, dropdownId, itemsList, onSelect) {
+        const input = document.getElementById(inputId);
+        const dropdown = document.getElementById(dropdownId);
+        if (!input || !dropdown) return;
+
+        function renderList(query) {
+            const q = query.trim().toLowerCase();
+            if (!q) {
+                dropdown.classList.add("hidden");
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            const matches = itemsList.filter(item => item.value && item.value.toLowerCase().includes(q));
+            if (matches.length === 0) {
+                dropdown.classList.add("hidden");
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            dropdown.innerHTML = "";
+            matches.slice(0, 8).forEach(item => {
+                const row = document.createElement("div");
+                row.className = "px-3 py-2 text-xs text-gray-800 hover:bg-blue-50 cursor-pointer flex items-center justify-between transition-colors";
+                
+                const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, "gi");
+                const highlighted = item.value.replace(regex, `<strong class="text-blue-700 bg-blue-100 font-bold px-0.5 rounded">$1</strong>`);
+
+                row.innerHTML = `
+                    <span>${highlighted}</span>
+                    <span class="text-[10px] text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-full font-medium">
+                        ${item.count} previous ${item.count === 1 ? 'entry' : 'entries'}
+                    </span>
+                `;
+
+                row.addEventListener("mousedown", function (e) {
+                    e.preventDefault();
+                    input.value = item.value;
+                    dropdown.classList.add("hidden");
+                    if (onSelect) onSelect(item.value);
+                });
+
+                dropdown.appendChild(row);
+            });
+
+            dropdown.classList.remove("hidden");
+        }
+
+        input.addEventListener("input", () => renderList(input.value));
+        input.addEventListener("focus", () => renderList(input.value));
+        input.addEventListener("blur", () => {
+            setTimeout(() => dropdown.classList.add("hidden"), 150);
+        });
+    }
+
+    // Initialize Typeaheads
+    setupTypeahead("product_name", "productSuggestions", historicalData.products || []);
+    setupTypeahead("dealer", "dealerSuggestions", historicalData.dealers || []);
+    setupTypeahead("rack_number", "rackSuggestions", historicalData.racks || []);
+
+    // -------------------------------------------------------------
+    // 3. Dynamic Product Models Tags Engine
+    // -------------------------------------------------------------
+    const modelTagInput = document.getElementById("modelTagInput");
+    const addModelBtn = document.getElementById("addModelBtn");
+    const chipContainer = document.getElementById("modelsChipContainer");
+    const modelsJsonInput = document.getElementById("modelsJsonInput");
+    const modelErrorText = document.getElementById("modelErrorText");
+    let currentModels = [];
+
+    function renderModelChips() {
+        chipContainer.innerHTML = "";
+        currentModels.forEach((model, index) => {
+            const chip = document.createElement("span");
+            chip.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 shadow-sm animate-scale-in";
+            chip.innerHTML = `
+                <span>${model}</span>
+                <button type="button" class="text-blue-500 hover:text-red-600 rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold text-xs transition-colors" data-index="${index}">&times;</button>
+            `;
+            chip.querySelector("button").addEventListener("click", function () {
+                const idx = parseInt(this.getAttribute("data-index"));
+                currentModels.splice(idx, 1);
+                renderModelChips();
+            });
+            chipContainer.appendChild(chip);
+        });
+
+        modelsJsonInput.value = JSON.stringify(currentModels);
+        if (currentModels.length > 0) {
+            modelErrorText.classList.add("hidden");
+        }
+    }
+
+    function addModelTag(val) {
+        const text = (val || modelTagInput.value).trim().replace(/,+$/, "");
+        if (!text) return;
+        if (!currentModels.includes(text)) {
+            currentModels.push(text);
+            renderModelChips();
+        }
+        modelTagInput.value = "";
+    }
+
+    addModelBtn.addEventListener("click", () => addModelTag());
+
+    modelTagInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            addModelTag();
+        }
+    });
+
+    setupTypeahead("modelTagInput", "modelSuggestions", historicalData.models || [], function (selectedVal) {
+        addModelTag(selectedVal);
+    });
+
+    // -------------------------------------------------------------
+    // 4. Cascading Category & Sub-Category
+    // -------------------------------------------------------------
+    const categoryPresets = {
+        "Toys": ["Hot Wheels", "Matchbox", "LEGO", "Hasbro", "Barbie", "Nerf", "Disney", "Marvel", "Maisto", "Fisher-Price", "Die-Cast"],
+        "Cycles": ["Hero Cycles", "Firefox", "Trek", "Giant", "Montra", "BSA", "Hercules", "Schnell", "Btwin", "Raleigh"],
+        "Electronics": ["Laptops & Computers", "Display & Monitors", "Power Banks & Batteries", "Cables & Adapters", "Cameras & Optics"],
+        "Computers & Laptops": ["Business Laptops", "Gaming Laptops", "Workstations", "Ultrabooks", "Servers"],
+        "Mobile & Tablets": ["Smartphones", "Tablets", "Cases & Protection", "Screen Protectors", "Chargers & Adapters"],
+        "Audio & Sound": ["Noise Cancelling Headphones", "Bluetooth Earbuds", "Soundbars", "Studio Monitors", "Microphones"],
+        "Networking & Storage": ["Wi-Fi Routers", "Ethernet Switches", "External Hard Drives", "NVMe SSDs", "NAS Storage"],
+        "Accessories & Peripherals": ["Wireless Mice", "Mechanical Keyboards", "USB Hubs & Docks", "Webcams", "Mouse Pads"],
+        "Office & Stationery": ["Laser Printers", "Toner Cartridges", "Shredders", "Desk Organizers", "Paper Supplies"],
+        "Components & Spares": ["Processors (CPU)", "Graphics Cards (GPU)", "RAM Modules", "Motherboards", "Cooling Fans"],
+        "Custom": ["Enter Custom Sub-Category..."]
+    };
+
+    const primaryCategorySelect = document.getElementById("primaryCategory");
+    const subCategorySelect = document.getElementById("subCategory");
+    const customCategoryWrapper = document.getElementById("customCategoryWrapper");
+    const customCategoryInput = document.getElementById("customCategoryInput");
+    const categoryCombinedInput = document.getElementById("categoryCombinedInput");
+
+    primaryCategorySelect.addEventListener("change", function () {
+        const cat = this.value;
+        subCategorySelect.innerHTML = '<option value="">Select Sub-Category...</option>';
+
+        if (cat === "Custom") {
+            customCategoryWrapper.classList.remove("hidden");
+            customCategoryInput.required = true;
+            subCategorySelect.parentElement.classList.add("hidden");
+            subCategorySelect.required = false;
+        } else {
+            customCategoryWrapper.classList.add("hidden");
+            customCategoryInput.required = false;
+            subCategorySelect.parentElement.classList.remove("hidden");
+            subCategorySelect.required = true;
+
+            const subs = categoryPresets[cat] || [];
+            subs.forEach(s => {
+                const opt = document.createElement("option");
+                opt.value = s;
+                opt.textContent = s;
+                subCategorySelect.appendChild(opt);
+            });
+        }
+        updateCategoryCombined();
+    });
+
+    subCategorySelect.addEventListener("change", updateCategoryCombined);
+    customCategoryInput.addEventListener("input", updateCategoryCombined);
+
+    function updateCategoryCombined() {
+        const primary = primaryCategorySelect.value;
+        if (primary === "Custom") {
+            categoryCombinedInput.value = customCategoryInput.value.trim() || "NA";
+        } else if (primary && subCategorySelect.value) {
+            categoryCombinedInput.value = `${primary} > ${subCategorySelect.value}`;
+        } else {
+            categoryCombinedInput.value = primary || "";
+        }
+    }
+
+    // -------------------------------------------------------------
+    // 5. NA Pill Helper Function
+    // -------------------------------------------------------------
+    function getPillOrValue(val) {
+        if (!val || val.trim() === "" || val.trim().toUpperCase() === "NA") {
+            return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-500 border border-gray-200">NA</span>`;
+        }
+        return `<span class="font-bold text-gray-800">${val.trim()}</span>`;
+    }
+
+    // -------------------------------------------------------------
+    // 6. Submission Preview Confirmation Modal Handling
+    // -------------------------------------------------------------
+    const reviewBtn = document.getElementById("reviewInwardBtn");
+    const previewModal = document.getElementById("previewModal");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const closeModalCrossBtn = document.getElementById("closeModalCrossBtn");
+    const confirmSubmitBtn = document.getElementById("confirmSubmitBtn");
+    const form = document.getElementById("inwardForm");
+
+    reviewBtn.addEventListener("click", function () {
+        const prodName = document.getElementById("product_name").value.trim();
+        const dealerVal = document.getElementById("dealer").value.trim();
+        const qtyVal = parseInt(document.getElementById("quantity").value, 10);
+        const rateVal = parseFloat(document.getElementById("rate").value);
+        const priceVal = parseFloat(document.getElementById("price").value);
+        updateCategoryCombined();
+        const catVal = categoryCombinedInput.value.trim();
+
+        if (!prodName) {
+            alert("⚠️ Please enter a Product Name.");
+            document.getElementById("product_name").focus();
+            return;
+        }
+
+        if (currentModels.length === 0) {
+            modelErrorText.classList.remove("hidden");
+            modelTagInput.focus();
+            return;
+        }
+
+        if (!catVal || catVal === "NA") {
+            alert("⚠️ Please choose Category & Sub-Category.");
+            primaryCategorySelect.focus();
+            return;
+        }
+
+        if (!dealerVal) {
+            alert("⚠️ Please enter Dealer / Supplier.");
+            document.getElementById("dealer").focus();
+            return;
+        }
+
+        if (isNaN(qtyVal) || qtyVal < 1) {
+            alert("⚠️ Quantity must be at least 1.");
+            document.getElementById("quantity").focus();
+            return;
+        }
+
+        if (isNaN(rateVal) || rateVal < 0) {
+            alert("⚠️ Please enter a valid Purchase Rate.");
+            document.getElementById("rate").focus();
+            return;
+        }
+
+        if (isNaN(priceVal) || priceVal < 0) {
+            alert("⚠️ Please enter a valid Sale Price.");
+            document.getElementById("price").focus();
+            return;
+        }
+
+        // Live timestamp injection for confirmation modal
+        const liveTimestamp = formatDateTime(new Date());
+        document.getElementById("injectedTimestampInput").value = liveTimestamp;
+        document.getElementById("modalTimestamp").textContent = liveTimestamp;
+
+        // Populate Modal Fields
+        document.getElementById("modalProductName").textContent = prodName;
+        document.getElementById("modalCategory").textContent = catVal;
+
+        const modalModelsCont = document.getElementById("modalModelsContainer");
+        modalModelsCont.innerHTML = "";
+        currentModels.forEach(m => {
+            const span = document.createElement("span");
+            span.className = "px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 animate-scale-in";
+            span.textContent = m;
+            modalModelsCont.appendChild(span);
+        });
+
+        document.getElementById("modalDealer").textContent = dealerVal;
+        document.getElementById("modalInvoiceNo").innerHTML = getPillOrValue(document.getElementById("invoice_no").value);
+        document.getElementById("modalQuantity").textContent = `${qtyVal} units`;
+        document.getElementById("modalFreeQuantity").innerHTML = getPillOrValue(document.getElementById("free_quantity").value);
+        document.getElementById("modalRate").textContent = `₹${rateVal.toFixed(2)}`;
+        document.getElementById("modalPrice").textContent = `₹${priceVal.toFixed(2)}`;
+        document.getElementById("modalTaxRate").innerHTML = getPillOrValue(document.getElementById("tax_rate").value);
+        document.getElementById("modalRackNumber").innerHTML = getPillOrValue(document.getElementById("rack_number").value);
+
+        previewModal.classList.remove("hidden");
+    });
+
+    closeModalBtn.addEventListener("click", () => previewModal.classList.add("hidden"));
+    closeModalCrossBtn.addEventListener("click", () => previewModal.classList.add("hidden"));
+
+    confirmSubmitBtn.addEventListener("click", function () {
+        confirmSubmitBtn.disabled = true;
+        confirmSubmitBtn.innerHTML = `<span>⏳ Saving Record...</span>`;
+        form.submit();
+    });
+
+    // Reset Form
+    document.getElementById("resetFormBtn").addEventListener("click", function () {
+        if (confirm("Are you sure you want to clear this entry form?")) {
+            form.reset();
+            currentModels = [];
+            renderModelChips();
+            subCategorySelect.innerHTML = '<option value="">Select Sub-Category...</option>';
+            customCategoryWrapper.classList.add("hidden");
+            categoryCombinedInput.value = "";
+        }
+    });
+
+    // -------------------------------------------------------------
+    // 7. Recent Inward Table Real-Time Filter
+    // -------------------------------------------------------------
+    const tableSearch = document.getElementById("tableSearchInput");
+    const tableRows = document.querySelectorAll("#inwardTableBody tr");
+    if (tableSearch) {
+        tableSearch.addEventListener("input", function () {
+            const query = this.value.toLowerCase().trim();
+            tableRows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(query) ? "" : "none";
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

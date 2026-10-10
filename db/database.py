@@ -139,6 +139,40 @@ def init_db(app=None):
         CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
         """)
 
+        # Automatic column migrations for Inward ERP Schema
+        for col, col_def in [
+            ("models", "TEXT DEFAULT 'NA'"),
+            ("category", "TEXT DEFAULT 'NA'"),
+            ("free_quantity", "TEXT DEFAULT 'NA'"),
+            ("invoice_no", "TEXT DEFAULT 'NA'"),
+            ("tax_rate", "TEXT DEFAULT 'NA'"),
+            ("rack_number", "TEXT DEFAULT 'NA'"),
+            ("timestamp_str", "TEXT DEFAULT ''"),
+            ("margin_rate", "TEXT DEFAULT 'NA'"),
+            ("landed_cost", "REAL DEFAULT 0.0"),
+            ("calc_mode", "TEXT DEFAULT 'auto'"),
+            ("pack_size", "TEXT DEFAULT 'NA'"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE inward_history ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
+
+        for col, col_def in [
+            ("models", "TEXT DEFAULT 'NA'"),
+            ("category", "TEXT DEFAULT 'NA'"),
+            ("rack_number", "TEXT DEFAULT 'NA'"),
+            ("tax_rate", "TEXT DEFAULT 'NA'"),
+            ("margin_rate", "TEXT DEFAULT 'NA'"),
+            ("landed_cost", "REAL DEFAULT 0.0"),
+            ("calc_mode", "TEXT DEFAULT 'auto'"),
+            ("pack_size", "TEXT DEFAULT 'NA'"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE inventory ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
+
     print("✅ Built-in SQLite database initialized successfully!")
 
 
@@ -325,24 +359,88 @@ def get_inventory_item_by_name(product_name):
     return None
 
 
-def add_inward_stock(product_name, dealer, quantity, rate, price, user):
+def add_inward_stock(
+    product_name,
+    dealer,
+    quantity,
+    rate,
+    price,
+    user,
+    models=None,
+    category="NA",
+    free_quantity="NA",
+    invoice_no="NA",
+    tax_rate="NA",
+    rack_number="NA",
+    timestamp_str=None,
+    margin_rate="NA",
+    landed_cost=0.0,
+    calc_mode="auto",
+    pack_size="NA"
+):
     """
-    Adds inward stock. If product already exists in inventory,
-    updates quantity, rate, price, and dealer.
-    Also records entry in inward_history and audit logs.
+    Adds inward stock with ERP schema support including dynamic pricing fields.
+    If product exists in inventory, updates quantity, rate, price, dealer, models, category, and rack.
+    Records entry in inward_history and system audit logs.
     """
     conn = get_db()
     with conn:
         cursor = conn.cursor()
         now = datetime.now()
-        
+        if not timestamp_str or not str(timestamp_str).strip():
+            timestamp_str = now.strftime('%d-%m-%Y %I:%M:%S %p')
+
+        # Format and validate models
+        if isinstance(models, (list, tuple)):
+            clean_models = [str(m).strip() for m in models if str(m).strip()]
+            models_json = json.dumps(clean_models) if clean_models else "NA"
+        elif isinstance(models, str) and models.strip():
+            try:
+                parsed = json.loads(models)
+                if isinstance(parsed, list):
+                    clean_models = [str(m).strip() for m in parsed if str(m).strip()]
+                    models_json = json.dumps(clean_models) if clean_models else "NA"
+                else:
+                    models_json = json.dumps([models.strip()])
+            except Exception:
+                parts = [p.strip() for p in models.split(",") if p.strip()]
+                models_json = json.dumps(parts) if parts else "NA"
+        else:
+            models_json = "NA"
+
+        # Apply default "NA" logic for optional fields
+        free_quantity = str(free_quantity).strip() if free_quantity not in (None, "", "NA") else "NA"
+        invoice_no = str(invoice_no).strip() if invoice_no not in (None, "", "NA") else "NA"
+        tax_rate = str(tax_rate).strip() if tax_rate not in (None, "", "NA") else "NA"
+        rack_number = str(rack_number).strip() if rack_number not in (None, "", "NA") else "NA"
+        category = str(category).strip() if category not in (None, "", "NA") else "NA"
+        margin_rate = str(margin_rate).strip() if margin_rate not in (None, "", "NA") else "NA"
+        calc_mode = str(calc_mode).strip() if calc_mode not in (None, "") else "auto"
+        pack_size = str(pack_size).strip() if pack_size not in (None, "", "NA") else "NA"
+
+        # Ensure landed_cost is numeric
+        try:
+            landed_cost = float(landed_cost)
+        except (ValueError, TypeError):
+            landed_cost = 0.0
+
         # 1. Record in inward_history
         cursor.execute(
             """
-            INSERT INTO inward_history (product_name, dealer, quantity, rate, price, user, added_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO inward_history (
+                product_name, models, dealer, quantity, free_quantity,
+                rate, price, category, invoice_no, tax_rate,
+                rack_number, timestamp_str, user, added_at,
+                margin_rate, landed_cost, calc_mode, pack_size
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (product_name, dealer, quantity, rate, price, user, now)
+            (
+                product_name, models_json, dealer, quantity, free_quantity,
+                rate, price, category, invoice_no, tax_rate,
+                rack_number, timestamp_str, user, now,
+                margin_rate, landed_cost, calc_mode, pack_size
+            )
         )
 
         # 2. Check if product already exists in inventory
@@ -354,18 +452,32 @@ def add_inward_stock(product_name, dealer, quantity, rate, price, user):
             cursor.execute(
                 """
                 UPDATE inventory 
-                SET quantity = quantity + ?, rate = ?, price = ?, dealer = ?, user = ?, updated_at = ?
+                SET quantity = quantity + ?, rate = ?, price = ?, dealer = ?,
+                    models = ?, category = ?, rack_number = ?,
+                    tax_rate = ?, margin_rate = ?, landed_cost = ?,
+                    calc_mode = ?, pack_size = ?,
+                    user = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (quantity, rate, price, dealer, user, now, item_id)
+                (quantity, rate, price, dealer, models_json, category, rack_number,
+                 tax_rate, margin_rate, landed_cost, calc_mode, pack_size,
+                 user, now, item_id)
             )
         else:
             cursor.execute(
                 """
-                INSERT INTO inventory (product_name, dealer, quantity, rate, price, user, added_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO inventory (
+                    product_name, models, category, rack_number,
+                    dealer, quantity, rate, price, user, added_at, updated_at,
+                    tax_rate, margin_rate, landed_cost, calc_mode, pack_size
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (product_name, dealer, quantity, rate, price, user, now, now)
+                (
+                    product_name, models_json, category, rack_number,
+                    dealer, quantity, rate, price, user, now, now,
+                    tax_rate, margin_rate, landed_cost, calc_mode, pack_size
+                )
             )
             item_id = cursor.lastrowid
 
@@ -376,10 +488,149 @@ def add_inward_stock(product_name, dealer, quantity, rate, price, user):
             product_id=item_id,
             product_name=product_name,
             quantity=quantity,
-            details={"rate": rate, "price": price, "dealer": dealer, "user": user}
+            details={
+                "rate": rate,
+                "price": price,
+                "dealer": dealer,
+                "category": category,
+                "models": models_json,
+                "invoice_no": invoice_no,
+                "free_quantity": free_quantity,
+                "tax_rate": tax_rate,
+                "rack_number": rack_number,
+                "margin_rate": margin_rate,
+                "landed_cost": landed_cost,
+                "calc_mode": calc_mode,
+                "pack_size": pack_size,
+                "timestamp_str": timestamp_str,
+                "user": user
+            }
         )
 
         return item_id
+
+
+def get_inward_history(limit=50):
+    """Returns recent inward stock historical records with parsed models."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT * FROM inward_history 
+        ORDER BY id DESC 
+        LIMIT ?
+        """,
+        (limit,)
+    )
+    rows = cursor.fetchall()
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["_id"] = str(d["id"])
+        raw_m = d.get("models") or "NA"
+        if raw_m.startswith("[") and raw_m.endswith("]"):
+            try:
+                d["models_list"] = json.loads(raw_m)
+            except Exception:
+                d["models_list"] = [raw_m]
+        elif raw_m != "NA":
+            d["models_list"] = [m.strip() for m in raw_m.split(",") if m.strip()]
+        else:
+            d["models_list"] = []
+
+        if not d.get("timestamp_str"):
+            ts = parse_timestamp(d.get("added_at"))
+            d["timestamp_str"] = ts.strftime('%d-%m-%Y %I:%M:%S %p')
+
+        # Ensure defaults for legacy records
+        for key in ("free_quantity", "invoice_no", "tax_rate", "rack_number", "category", "margin_rate", "calc_mode", "pack_size"):
+            if not d.get(key) or d.get(key) == "":
+                d[key] = "NA"
+        if not d.get("landed_cost"):
+            d["landed_cost"] = 0.0
+
+        result.append(d)
+    return result
+
+
+def get_inward_suggestions():
+    """
+    Returns distinct historical values with entry frequency counts
+    for Product Name, Models, Dealers, Categories, and Rack Numbers.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Products with historical count
+    cursor.execute("""
+        SELECT product_name, COUNT(*) as count 
+        FROM inward_history 
+        WHERE product_name IS NOT NULL AND product_name != ''
+        GROUP BY product_name 
+        ORDER BY count DESC, product_name ASC
+    """)
+    products = [{"value": r["product_name"], "count": r["count"]} for r in cursor.fetchall()]
+
+    # Dealers with count
+    cursor.execute("""
+        SELECT dealer, COUNT(*) as count 
+        FROM inward_history 
+        WHERE dealer IS NOT NULL AND dealer != ''
+        GROUP BY dealer 
+        ORDER BY count DESC, dealer ASC
+    """)
+    dealers = [{"value": r["dealer"], "count": r["count"]} for r in cursor.fetchall()]
+
+    # Categories with count
+    cursor.execute("""
+        SELECT category, COUNT(*) as count 
+        FROM inward_history 
+        WHERE category IS NOT NULL AND category != '' AND category != 'NA'
+        GROUP BY category 
+        ORDER BY count DESC, category ASC
+    """)
+    categories = [{"value": r["category"], "count": r["count"]} for r in cursor.fetchall()]
+
+    # Racks with count
+    cursor.execute("""
+        SELECT rack_number, COUNT(*) as count 
+        FROM inward_history 
+        WHERE rack_number IS NOT NULL AND rack_number != '' AND rack_number != 'NA'
+        GROUP BY rack_number 
+        ORDER BY count DESC, rack_number ASC
+    """)
+    racks = [{"value": r["rack_number"], "count": r["count"]} for r in cursor.fetchall()]
+
+    # Models with count
+    cursor.execute("""
+        SELECT models 
+        FROM inward_history 
+        WHERE models IS NOT NULL AND models != '' AND models != 'NA'
+    """)
+    model_counts = {}
+    for r in cursor.fetchall():
+        raw = r["models"]
+        if raw.startswith("[") and raw.endswith("]"):
+            try:
+                m_list = json.loads(raw)
+            except Exception:
+                m_list = [m.strip() for m in raw.split(",") if m.strip()]
+        else:
+            m_list = [m.strip() for m in raw.split(",") if m.strip()]
+        for m in m_list:
+            clean = m.strip()
+            if clean and clean != "NA":
+                model_counts[clean] = model_counts.get(clean, 0) + 1
+
+    models = [{"value": k, "count": v} for k, v in sorted(model_counts.items(), key=lambda x: (-x[1], x[0]))]
+
+    return {
+        "products": products,
+        "dealers": dealers,
+        "categories": categories,
+        "racks": racks,
+        "models": models
+    }
 
 
 def update_inventory_stock(item_id, quantity_change, user):
@@ -719,6 +970,148 @@ def get_daily_sales_history():
         """
     )
     return [dict(r) for r in cursor.fetchall()]
+
+
+def get_billing_history(start_date=None, end_date=None, limit=None, offset=0):
+    """
+    Retrieves bills and their associated bill_items within a given date range.
+    Calculates aggregate sales amount, bill count, and total items sold.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    conditions = []
+    params = []
+
+    if start_date:
+        if isinstance(start_date, datetime):
+            start_str = start_date.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(start_date, str) and len(start_date.strip()) == 10:
+            start_str = f"{start_date.strip()} 00:00:00"
+        else:
+            start_str = str(start_date).strip()
+        conditions.append("b.bill_date >= ?")
+        params.append(start_str)
+
+    if end_date:
+        if isinstance(end_date, datetime):
+            end_str = end_date.strftime('%Y-%m-%d %H:%M:%S')
+        elif isinstance(end_date, str) and len(end_date.strip()) == 10:
+            end_str = f"{end_date.strip()} 23:59:59"
+        else:
+            end_str = str(end_date).strip()
+        conditions.append("b.bill_date <= ?")
+        params.append(end_str)
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    # Aggregate stats for the period
+    cursor.execute(
+        f"""
+        SELECT 
+            COALESCE(SUM(b.total_amount), 0) AS total_sales,
+            COUNT(b.id) AS total_bills
+        FROM bills b
+        {where_clause}
+        """,
+        params
+    )
+    agg_row = cursor.fetchone()
+    total_sales = float(agg_row["total_sales"]) if agg_row else 0.0
+    total_bills = int(agg_row["total_bills"]) if agg_row else 0
+
+    # Total items quantity for the period
+    cursor.execute(
+        f"""
+        SELECT COALESCE(SUM(bi.quantity), 0) AS total_items
+        FROM bill_items bi
+        JOIN bills b ON bi.bill_id = b.id
+        {where_clause}
+        """,
+        params
+    )
+    items_row = cursor.fetchone()
+    total_items = int(items_row["total_items"]) if items_row else 0
+
+    # Query matching bills
+    query = f"SELECT * FROM bills b {where_clause} ORDER BY b.bill_date DESC"
+    query_params = list(params)
+    if limit is not None:
+        query += " LIMIT ?"
+        query_params.append(int(limit))
+        if offset:
+            query += " OFFSET ?"
+            query_params.append(int(offset))
+
+    cursor.execute(query, query_params)
+    bill_rows = cursor.fetchall()
+
+    if not bill_rows:
+        return {
+            "bills": [],
+            "total_sales": total_sales,
+            "total_bills": total_bills,
+            "total_items": total_items
+        }
+
+    # Fetch items for all returned bills in one query
+    bill_ids = [r["id"] for r in bill_rows]
+    placeholders = ",".join("?" for _ in bill_ids)
+    cursor.execute(
+        f"""
+        SELECT bill_id, product_name, quantity, sale_price, total
+        FROM bill_items
+        WHERE bill_id IN ({placeholders})
+        ORDER BY id ASC
+        """,
+        bill_ids
+    )
+    items_by_bill = {}
+    for item_row in cursor.fetchall():
+        bid = item_row["bill_id"]
+        if bid not in items_by_bill:
+            items_by_bill[bid] = []
+        items_by_bill[bid].append({
+            "product_name": item_row["product_name"],
+            "quantity": int(item_row["quantity"]),
+            "sale_price": float(item_row["sale_price"]),
+            "total": float(item_row["total"])
+        })
+
+    bills_list = []
+    for r in bill_rows:
+        b = dict(r)
+        b_date = parse_timestamp(b.get("bill_date"))
+        b["bill_date"] = b_date
+        b["formatted_date"] = b_date.strftime('%d-%b-%Y %I:%M %p')
+        b["formatted_date_short"] = b_date.strftime('%d-%b-%Y')
+        b["customer_name"] = b.get("customer_name") or "Walk-in Customer"
+        b["mobile_number"] = b.get("mobile_number") or "NA"
+        b["total_amount"] = float(b.get("total_amount", 0.0))
+        b["user"] = b.get("user") or "System"
+
+        last_ed = b.get("last_edited")
+        if last_ed:
+            last_ed_dt = parse_timestamp(last_ed)
+            b["is_edited"] = True
+            b["last_edited"] = last_ed_dt
+            b["formatted_last_edited"] = last_ed_dt.strftime('%d-%b-%Y %I:%M %p')
+        else:
+            b["is_edited"] = False
+            b["formatted_last_edited"] = None
+
+        bill_items = items_by_bill.get(b["id"], [])
+        b["items"] = bill_items
+        b["billed_items"] = bill_items
+        b["total_quantity"] = sum(item["quantity"] for item in bill_items)
+        bills_list.append(b)
+
+    return {
+        "bills": bills_list,
+        "total_sales": total_sales,
+        "total_bills": total_bills,
+        "total_items": total_items
+    }
 
 
 def seed_sample_data(default_user="admin", default_pass="admin123"):

@@ -2,7 +2,7 @@
 import sys
 import subprocess
 from datetime import datetime, time, timedelta
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, request, jsonify
 from modules.auth.session import SESSION
 from db.database import (
     get_all_users,
@@ -10,10 +10,58 @@ from db.database import (
     get_deleted_logs,
     get_sales_stats,
     get_sales_by_product,
-    get_daily_sales_history
+    get_daily_sales_history,
+    get_billing_history
 )
 
 core_bp = Blueprint("core", __name__)
+
+
+def resolve_filter_range(filter_type, start_date_str=None, end_date_str=None):
+    """Calculates start_date, end_date and human label for Billing History filters."""
+    now = datetime.now()
+    today_start = datetime.combine(now.date(), time.min)
+    today_end = datetime.combine(now.date(), time.max)
+    
+    filter_type = (filter_type or "daily").lower().strip()
+    
+    if filter_type == "daily":
+        start_date = today_start
+        end_date = today_end
+        label = f"Daily ({now.strftime('%d %b %Y')})"
+    elif filter_type == "weekly":
+        start_date = today_start - timedelta(days=6)
+        end_date = today_end
+        label = f"Weekly ({start_date.strftime('%d %b')} - {end_date.strftime('%d %b %Y')})"
+    elif filter_type == "monthly":
+        start_date = today_start.replace(day=1)
+        end_date = today_end
+        label = f"Monthly ({now.strftime('%B %Y')})"
+    elif filter_type == "custom":
+        if start_date_str and end_date_str:
+            try:
+                s_dt = datetime.strptime(start_date_str.strip(), "%Y-%m-%d")
+                e_dt = datetime.strptime(end_date_str.strip(), "%Y-%m-%d")
+                start_date = datetime.combine(s_dt.date(), time.min)
+                end_date = datetime.combine(e_dt.date(), time.max)
+                label = f"Custom ({s_dt.strftime('%d %b %Y')} - {e_dt.strftime('%d %b %Y')})"
+            except ValueError:
+                start_date = today_start
+                end_date = today_end
+                filter_type = "daily"
+                label = f"Daily ({now.strftime('%d %b %Y')})"
+        else:
+            start_date = today_start
+            end_date = today_end
+            filter_type = "daily"
+            label = f"Daily ({now.strftime('%d %b %Y')})"
+    else:
+        filter_type = "daily"
+        start_date = today_start
+        end_date = today_end
+        label = f"Daily ({now.strftime('%d %b %Y')})"
+
+    return filter_type, start_date, end_date, label
 
 
 @core_bp.route("/")
@@ -39,6 +87,16 @@ def home():
     daily_sales = get_sales_by_product(today_start, today_end)
     weekly_sales_chart_data = get_sales_by_product(week_start, today_end)
 
+    # Billing History Filters
+    req_filter = request.args.get("filter", "daily")
+    start_date_param = request.args.get("start_date", "")
+    end_date_param = request.args.get("end_date", "")
+
+    active_filter, hist_start, hist_end, filter_label = resolve_filter_range(
+        req_filter, start_date_param, end_date_param
+    )
+    history_data = get_billing_history(hist_start, hist_end)
+
     return render_template(
         "home.html",
         daily_total=f"₹{daily_stats['total_sales']:.2f}",
@@ -48,8 +106,61 @@ def home():
         weekly_items_sold=weekly_stats["total_items"],
         monthly_items_sold=monthly_stats["total_items"],
         daily_sales=daily_sales,
-        weekly_sales=weekly_sales_chart_data
+        weekly_sales=weekly_sales_chart_data,
+        billing_history=history_data["bills"],
+        billing_total_sales=f"₹{history_data['total_sales']:,.2f}",
+        billing_total_sales_raw=history_data["total_sales"],
+        billing_total_bills=history_data["total_bills"],
+        billing_total_items=history_data["total_items"],
+        active_filter=active_filter,
+        filter_label=filter_label,
+        start_date_val=hist_start.strftime("%Y-%m-%d"),
+        end_date_val=hist_end.strftime("%Y-%m-%d")
     )
+
+
+@core_bp.route("/api/billing_history", methods=["GET"])
+@SESSION.login_required
+def api_billing_history():
+    req_filter = request.args.get("filter", "daily")
+    start_date_param = request.args.get("start_date", "")
+    end_date_param = request.args.get("end_date", "")
+
+    active_filter, hist_start, hist_end, filter_label = resolve_filter_range(
+        req_filter, start_date_param, end_date_param
+    )
+    history_data = get_billing_history(hist_start, hist_end)
+
+    serialized_bills = []
+    for b in history_data["bills"]:
+        serialized_bills.append({
+            "id": b["id"],
+            "bill_no": b["bill_no"],
+            "formatted_date": b["formatted_date"],
+            "formatted_date_short": b["formatted_date_short"],
+            "customer_name": b["customer_name"],
+            "mobile_number": b["mobile_number"],
+            "total_amount": b["total_amount"],
+            "formatted_total_amount": f"₹{b['total_amount']:,.2f}",
+            "user": b["user"],
+            "is_edited": b["is_edited"],
+            "formatted_last_edited": b["formatted_last_edited"],
+            "total_quantity": b["total_quantity"],
+            "items": b["items"]
+        })
+
+    return jsonify({
+        "status": "success",
+        "filter": active_filter,
+        "filter_label": filter_label,
+        "start_date": hist_start.strftime("%Y-%m-%d"),
+        "end_date": hist_end.strftime("%Y-%m-%d"),
+        "total_sales": history_data["total_sales"],
+        "formatted_total_sales": f"₹{history_data['total_sales']:,.2f}",
+        "total_bills": history_data["total_bills"],
+        "total_items": history_data["total_items"],
+        "bills": serialized_bills
+    })
 
 
 @core_bp.route("/user_accounts")
